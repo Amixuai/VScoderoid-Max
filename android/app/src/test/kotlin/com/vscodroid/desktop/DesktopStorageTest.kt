@@ -1,21 +1,20 @@
 package com.vscodroid.desktop
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
 class DesktopStorageTest {
-    @get:Rule
-    val tmp = TemporaryFolder()
+    @TempDir
+    lateinit var tmp: File
 
     private fun storage(): Triple<DesktopStorage, File, File> {
-        val engine = tmp.newFolder("files")
-        val pub = tmp.newFolder("public")
-        val rootfs = tmp.newFolder("rootfs")
+        val engine = File(tmp, "files").apply { mkdirs() }
+        val pub = File(tmp, "public").apply { mkdirs() }
+        val rootfs = File(tmp, "rootfs").apply { mkdirs() }
         return Triple(DesktopStorage(engine, pub, rootfs) { _, _ -> }, pub, engine)
     }
 
@@ -97,7 +96,7 @@ class DesktopStorageTest {
     fun privateTreeAndCacheBinds() {
         val (s, _, engine) = storage()
         s.ensurePrivateTree()
-        for (d in listOf("proot_layer", "global_libraries/node_modules", "global_libraries/pip_packages", "local_project_deps", "logs")) assertTrue(d, File(engine, d).isDirectory)
+        for (d in listOf("proot_layer", "global_libraries/node_modules", "global_libraries/pip_packages", "local_project_deps", "logs")) assertTrue(File(engine, d).isDirectory, d)
         assertEquals(6, s.globalBinds().size)
     }
 }

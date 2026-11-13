@@ -108,7 +108,7 @@ get_sonames() {
         libandroid-shmem)  echo "libandroid-shmem.so" ;;
         c-ares)            echo "libcares.so" ;;
         # libicudata is the 32 MB data blob the other two are useless without.
-        libicu)            echo "libicui18n.so.78 libicuuc.so.78 libicudata.so.78" ;;
+        libicu)            echo "libicui18n.so.79 libicuuc.so.79 libicudata.so.79" ;;
         libc++)            echo "libc++_shared.so" ;;
         libsqlite)         echo "libsqlite3.so" ;;
         *)                 echo "" ;;
@@ -608,8 +608,9 @@ termux_copy_notices "$ASSETS_DIR/usr" "${REQUIRED_PACKAGES[@]}"
 # fourteen bytes "404: Not Found", and nothing else in the package is a licence
 # file. Shipping those fourteen bytes would discharge nothing, so the file is
 # replaced with the LICENSE from the upstream release Termux builds, taken
-# verbatim from unicode-org/icu at tag release-78.3 -- the tag its own build.sh
-# names through TERMUX_PKG_SRCURL for TERMUX_PKG_VERSION=78.3.
+# verbatim from unicode-org/icu at tag release-79.1 -- the tag its own build.sh
+# names through TERMUX_PKG_SRCURL for TERMUX_PKG_VERSION=79.1. (The index moved from
+# ICU 78.3 to 79.x; the 404 stub was measured on 78.3 and is not re-measured on 79.)
 #
 # Not verified: WHY Termux ships an error page there. Its build.sh reads
 # TERMUX_PKG_LICENSE_FILE="../LICENSE" under a comment calling that path a hack,
@@ -618,7 +619,7 @@ termux_copy_notices "$ASSETS_DIR/usr" "${REQUIRED_PACKAGES[@]}"
 #
 # The text is version-specific and the package version is resolved from a live
 # index, so the two are compared rather than left to a comment nobody re-reads.
-# A libicu bump that nobody re-paired would ship 78.3's LICENSE beside a
+# A libicu bump that nobody re-paired would ship 79.1's LICENSE beside a
 # different ICU, which is the one way this notice goes wrong with every step
 # green. Re-take the text from unicode-org/icu at the matching release tag and
 # move the version here.
@@ -629,7 +630,7 @@ termux_copy_notices "$ASSETS_DIR/usr" "${REQUIRED_PACKAGES[@]}"
 # ICU arrives as 78.3-1. That is the same LICENSE, so an exact string test would
 # fail every build over a repackaging and send the reader to release-78.3-1, a
 # tag unicode-org/icu does not have.
-ICU_NOTICE_VERSION="78.3"
+ICU_NOTICE_VERSION="79.1"
 ICU_INDEX_VERSION="$(termux_pkg_version libicu)"
 case "$ICU_INDEX_VERSION" in
     "$ICU_NOTICE_VERSION"|"$ICU_NOTICE_VERSION"-*) ;;
