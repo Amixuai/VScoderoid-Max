@@ -1,0 +1,60 @@
+# Debian packages baked into the Desktop Mode system that ships inside the APK
+# (scripts/build-desktop-rootfs.sh). One package per line; "#" starts a comment.
+# The Master Blueprint (section 5) puts the screen stack, the editor and the
+# compilers inside the Debian tree, and the app is meant to work the moment it is
+# installed, so none of this is downloaded on the phone. Package-manager content
+# (npm modules, pip packages, composer packages) is NOT here: as on a PC, those
+# arrive with the user's own commands.
+#
+# Size is not the constraint here, the unpack time on a phone is: remove a
+# language you do not ship rather than trimming the screen stack.
+
+# --- The screen: virtual display, window manager, browser-based viewer ---
+tigervnc-standalone-server
+tigervnc-common
+openbox
+novnc
+websockify
+x11-utils
+x11-xserver-utils
+xauth
+xclip
+xdg-utils
+xterm
+dbus-x11
+fonts-dejavu-core
+xfonts-base
+
+# --- What the commands of the Windows/macOS alias table translate to ---
+procps
+iproute2
+debianutils
+
+# --- Everyday tools every PC setup has ---
+ca-certificates
+curl
+wget
+git
+openssh-client
+less
+nano
+unzip
+zip
+
+# --- Compilers and interpreters (Master Blueprint, section 5, item 4) ---
+build-essential
+cmake
+pkg-config
+python3
+python3-venv
+python3-pip
+python3-dev
+nodejs
+npm
+php-cli
+php-xml
+php-mbstring
+sqlite3
+golang-go
+rustc
+cargo

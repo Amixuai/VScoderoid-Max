@@ -1,0 +1,3 @@
+# The VSCodium release baked into the Desktop Mode system (for example 1.99.32562).
+# Empty = the newest release at build time, which the build records in rootfs.meta.json.
+# Release builds should pin it so two builds of one commit ship the same editor.
