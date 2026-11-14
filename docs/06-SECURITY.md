@@ -250,6 +250,30 @@ to: patch 0005 disables the service worker upstream uses to scope each webview t
 
 ---
 
+### 3.8 Desktop Mode
+
+Desktop Mode adds a second screen and a second local server, so it has its own controls:
+
+- **Loopback is not private on Android.** Any app on the phone can connect to a port on
+  127.0.0.1. The VNC server therefore binds to 127.0.0.1 only, requires a VNC password,
+  and that password is random for each session. It exists in memory and in the guest's
+  own password file, never in a log, a notification, a command line or a backup.
+- **The web viewer shows one origin.** The Desktop Mode screen refuses to navigate
+  anywhere except `http://127.0.0.1:6080`, and turns off file and content access in its
+  web view. It has no JavaScript bridge into the app.
+- **Nothing leaves in a backup.** The cloud backup rules are an allowlist that names none
+  of the Desktop Mode folders (`debian_rootfs`, `proot_layer`, `global_libraries`,
+  `local_project_deps`) or its saved state, so a restore cannot describe a system that
+  is not there.
+- **The system comes with the APK and is checked.** The Debian tree is built in CI from a
+  pinned, checksum-verified base image and shipped as an asset; the app verifies its
+  SHA-256 while unpacking, refuses `..` paths and device nodes, and never writes through
+  a symbolic link. The editor's `.deb` is checked against the SHA-256 its project publishes
+  when the image is built.
+- **PRoot is not a security boundary.** It makes Android look like Linux without root;
+  programs in the desktop run with the app's own rights and can reach what the app can
+  reach, which is the same as a program in the existing terminal.
+
 ## 4. Android Permissions
 
 ### 4.1 Required Permissions

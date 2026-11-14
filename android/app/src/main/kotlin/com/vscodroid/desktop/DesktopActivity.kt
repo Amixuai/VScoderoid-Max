@@ -139,6 +139,12 @@ class DesktopActivity : AppCompatActivity() {
             findViewById<View>(R.id.desktop_progress).visibility =
                 if (state == DesktopState.Failed || state == DesktopState.NotAvailable) View.GONE else View.VISIBLE
             webView.visibility = View.INVISIBLE
+            val detail = findViewById<TextView>(R.id.desktop_detail)
+            val reason = DesktopManager.lastFailure?.detail.orEmpty()
+            val showDetail = state == DesktopState.Failed && reason.isNotBlank() &&
+                DesktopManager.lastFailure?.kind == DesktopManager.FailureKind.Other
+            detail.text = if (showDetail) reason.take(DETAIL_CHARS) else ""
+            detail.visibility = if (showDetail) View.VISIBLE else View.GONE
             if (state == DesktopState.Failed &&
                 DesktopManager.lastFailure?.kind == DesktopManager.FailureKind.NeedsAllFilesAccess
             ) {
@@ -147,6 +153,7 @@ class DesktopActivity : AppCompatActivity() {
             return
         }
         status.visibility = View.GONE
+        findViewById<View>(R.id.desktop_detail).visibility = View.GONE
         findViewById<View>(R.id.desktop_progress).visibility = View.GONE
         webView.visibility = View.VISIBLE
         val url = DesktopManager.viewerUrl() ?: return
@@ -187,6 +194,7 @@ class DesktopActivity : AppCompatActivity() {
 
     private companion object {
         const val KEY_PHANTOM_HELP_SHOWN = "phantom_help_shown"
+        const val DETAIL_CHARS = 1200
         const val MEMORY_WARNING_GAP_MS = 5 * 60 * 1000L
     }
 }

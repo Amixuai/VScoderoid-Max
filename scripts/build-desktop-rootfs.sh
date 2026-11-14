@@ -191,6 +191,15 @@ cp "$WORK_DIR/$DEB" "$TREE/tmp/codium.deb"
 in_tree apt-get install -y --no-install-recommends /tmp/codium.deb
 in_tree test -x /usr/share/codium/codium
 
+# Master Blueprint item 5 names npm, pnpm and yarn as the node package managers. npm comes
+# with Debian's nodejs; pnpm and yarn are installed the way their own documentation says,
+# with npm, into /usr/local (the prefix a per-user install on the phone never covers, because
+# the user's global modules are bound over /root/.npm-global at run time).
+echo "Installing pnpm and yarn..."
+in_tree npm install -g --prefix /usr/local --no-fund --no-audit pnpm yarn
+in_tree pnpm --version
+in_tree yarn --version
+
 # Master Blueprint item 3: the editor's own folder, with its user data kept beside it.
 mkdir -p "$TREE/engines/electron_vscode/user_data"
 echo "$VER" > "$TREE/engines/electron_vscode/VERSION"

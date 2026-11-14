@@ -142,11 +142,11 @@ class DesktopLauncher(
         session = process
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(readyTimeoutSeconds)
         while (System.nanoTime() < deadline) {
-            if (!process.isAlive) return "the session ended with exit ${process.exitValue()}: ${logTail()}"
+            if (!process.isAlive) return "the session ended with exit ${process.exitValue()}: ${logTail()} | ${guestLogTail()}"
             if (status().healthy) return null
             Thread.sleep(POLL_MS)
         }
-        return "ports did not open in ${readyTimeoutSeconds}s: ${logTail()}"
+        return "ports did not open in ${readyTimeoutSeconds}s: ${logTail()} | ${guestLogTail()}"
     }
 
     private fun environment(plan: DesktopStorage.Plan, geometry: String, password: String, noSeccomp: Boolean): Map<String, String> {
@@ -223,6 +223,19 @@ class DesktopLauncher(
     private fun logTail(): String =
         runCatching { logFile.readText().takeLast(DETAIL_LIMIT).replace('\n', ' ') }.getOrDefault("(no log)")
 
+    /**
+     * The end of the guest's own logs (display server, web bridge, editor), which live
+     * inside the unpacked system and so cannot be read by the person using the phone.
+     * They go into the failure text the screen shows, so a failed start can be reported
+     * from a screenshot. None of them holds the session secret: the password is handed
+     * to the display server in one process's environment, never on a command line or in a log.
+     */
+    private fun guestLogTail(): String = listOf("xvnc", "websockify", "codium").joinToString(" | ") { name ->
+        val tail = runCatching { File(rootfs, "tmp/$name.log").readText().takeLast(GUEST_LOG_TAIL).replace('\n', ' ') }
+            .getOrDefault("(none)")
+        "$name: $tail"
+    }
+
     private fun portOpen(port: Int): Boolean = try {
         Socket().use { it.connect(InetSocketAddress("127.0.0.1", port), 400); true }
     } catch (_: IOException) {
@@ -247,6 +260,7 @@ class DesktopLauncher(
         private const val REPAIR_TIMEOUT_SECONDS = 1800L
         private const val POLL_MS = 500L
         private const val DETAIL_LIMIT = 400
+        private const val GUEST_LOG_TAIL = 240
         private const val LOG_LIMIT_BYTES = 1_048_576L
         private const val LOG_KEEP_BYTES = 262_144
 

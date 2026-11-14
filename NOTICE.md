@@ -43,6 +43,8 @@ Versions are deliberately not listed unless pinned in this repository: most comp
 | XZ for Java | Public domain | https://tukaani.org/xz/java.html, a Java library linked into the app (Maven `org.tukaani:xz`) that unpacks the Debian root file system Desktop Mode ships inside the APK |
 | Debian GNU/Linux 13 (trixie) packages | Each package's own licence (mostly GPL, LGPL, MIT, BSD, Apache-2.0), kept in `/usr/share/doc/<package>/copyright` inside the system | the Debian root file system Desktop Mode ships inside the APK (`assets/desktop/rootfs.tar.xz`); the list is `scripts/desktop-packages.txt` and the built list is `rootfs.meta.json`; source: https://deb.debian.org/debian and https://sources.debian.org |
 | VSCodium | MIT | the Electron editor Desktop Mode runs, installed in that system from the project's published arm64 `.deb`; source: https://github.com/VSCodium/vscodium |
+| pnpm | MIT | installed in the Desktop Mode system with npm at image build; source: https://github.com/pnpm/pnpm |
+| Yarn (classic) | BSD-2-Clause | installed in the Desktop Mode system with npm at image build; source: https://github.com/yarnpkg/yarn |
 | musl (dynamic loader) | MIT | Alpine Linux package, https://musl.libc.org, bundled so the Claude Code CLI can run; the CLI itself is installed by the user and is not redistributed here |
 
 ## Bundled Native Components

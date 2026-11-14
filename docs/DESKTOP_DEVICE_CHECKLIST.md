@@ -35,6 +35,9 @@ Session: device, Android version, RAM, build (debug or release), date.
 | DT-23 | Aliases | `cls`, `copy`, `move`, `dir` work; `type ls` and `type cp` report the Linux programs; non-interactive scripts are unaffected | |
 | DT-24 | Parity audit | `compgen -c` in the desktop terminal lists no command that exists only in this app; the only additions to stock Debian are the documented aliases | |
 | DT-25 | Normal editor | The normal editor still passes its own checklist (docs/DEVICE_TEST_CHECKLIST.md) after Desktop Mode has been used | |
+| DT-26 | Window manager menu | A long press on the empty desktop opens the openbox menu; its terminal entry opens xterm, where `cat /tmp/codium.log` works | |
+| DT-27 | Failure text | With the rootfs asset missing or a port blocked, the screen shows the failure and the end of the logs; no secret appears in it | |
+| DT-28 | Other languages | `ruby -v`, `java -version`, `javac -version`, `composer --version`, `pnpm --version`, `yarn --version` and `sudo true` work with no install step | |
 
 ## Known gaps to look at first
 

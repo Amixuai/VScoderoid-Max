@@ -1060,8 +1060,9 @@ The screen is landscape only. Input is the same as any remote desktop viewer:
 ### What Is Inside
 
 Everything is already installed, with nothing to download and no command to run first:
-gcc and g++, make and cmake, Python 3 with venv and pip, Node.js with npm, PHP, Go, Rust
-with cargo, SQLite and Git. Only the packages you install yourself (`npm install`,
+gcc and g++, make and cmake, Python 3 with venv and pip, Node.js with npm, pnpm and yarn,
+PHP with composer, Go, Rust with cargo, Ruby, Java (OpenJDK), SQLite, Git, `sudo` and the
+usual tools such as vim, tmux, jq and rsync. Only the packages you install yourself (`npm install`,
 `pip install`, `cargo build` and so on) come from your own commands, as on a PC.
 
 Extensions come from Open VSX, the same registry the normal editor uses.
@@ -1083,6 +1084,15 @@ equivalent so a mixed habit still works: `cls`, `copy`, `move`, `del`, `erase`, 
 Only the name is mapped. Windows switches such as `/s` are not translated, and macOS
 tools differ from the GNU ones in places an alias cannot hide, for example
 `sed -i ''`. Nothing in Desktop Mode adds a command that exists only in this app.
+
+### If Something Does Not Open
+
+Right-click the desktop background (long press) for the window manager's menu, which has a
+terminal. The editor writes its messages to `/tmp/codium.log`, the display server to
+`/tmp/xvnc.log` and the web bridge to `/tmp/websockify.log`; `cat` them there.
+
+If Desktop Mode cannot start, the screen says so and shows the end of those logs under the
+message. Take a screenshot of it when you report the problem.
 
 ### If the Desktop Stops in the Background
 

@@ -58,3 +58,19 @@ sqlite3
 golang-go
 rustc
 cargo
+
+# --- The other languages the app supports, so none of them is a download later ---
+ruby
+ruby-dev
+default-jdk-headless
+composer
+
+# --- What tutorials and everyday PC work type ---
+sudo
+vim
+tree
+jq
+rsync
+htop
+tmux
+file

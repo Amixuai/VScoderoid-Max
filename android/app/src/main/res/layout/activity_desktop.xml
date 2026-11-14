@@ -40,5 +40,19 @@
             android:gravity="center"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
+
+        <!-- Why a start failed, in the words of the logs. Shown only on failure, so a
+             failure can be reported from a screenshot; there is no other way to read a
+             private log on a phone. Selectable text, not a control. -->
+        <TextView
+            android:id="@+id/desktop_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#B0B0B0"
+            android:textIsSelectable="true"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:ignore="SmallSp" />
     </LinearLayout>
 </FrameLayout>
