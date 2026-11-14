@@ -131,9 +131,7 @@ in_tree() { chroot "$TREE" /usr/bin/env -i HOME=/root LANG=C.UTF-8 TERM=dumb DEB
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "$@"; }
 
 # A network for apt, and the repositories this build uses (the app rewrites the same files on first use).
-# Explicit resolvers from pins.json: the runner's own file points at a stub that only exists on the host.
-rm -f "$TREE/etc/resolv.conf"
-python3 -I -c 'import json,sys; print("\n".join("nameserver " + d for d in json.load(open(sys.argv[1]))["dns"]))' "$PINS" > "$TREE/etc/resolv.conf"
+cp /etc/resolv.conf "$TREE/etc/resolv.conf"
 mkdir -p "$TREE/etc/apt/sources.list.d"
 : > "$TREE/etc/apt/sources.list"
 cat > "$TREE/etc/apt/sources.list.d/debian.sources" <<EOF
@@ -152,15 +150,6 @@ EOF
 # No service can start in a build tree; a policy of 101 tells maintainer scripts so.
 printf '#!/bin/sh\nexit 101\n' > "$TREE/usr/sbin/policy-rc.d"; chmod 755 "$TREE/usr/sbin/policy-rc.d"
 
-# Build-time apt/dpkg settings, removed again before packing so the shipped system keeps stock behaviour.
-# Root as the APT download user (no privilege drop under emulation); no fsync storms; man pages,
-# info pages and translations are skipped (licence texts in /usr/share/doc stay).
-mkdir -p "$TREE/etc/apt/apt.conf.d" "$TREE/etc/dpkg/dpkg.cfg.d"
-echo 'APT::Sandbox::User "root";' > "$TREE/etc/apt/apt.conf.d/99build-root"
-printf '%s\n' 'force-unsafe-io' 'path-exclude=/usr/share/man/*' 'path-exclude=/usr/share/info/*' \
-    'path-exclude=/usr/share/locale/*' 'path-include=/usr/share/locale/locale.alias' \
-    > "$TREE/etc/dpkg/dpkg.cfg.d/99build-fast"
-
 echo "Installing packages..."
 in_tree apt-get update
 # shellcheck disable=SC2046
@@ -169,15 +158,30 @@ in_tree apt-get install -y --no-install-recommends $(packages | tr '\n' ' ')
 echo "Installing the editor..."
 VER="${VSCODIUM_VERSION:-}"
 if [ -z "$VER" ] && [ -f "$ROOT_DIR/VSCODIUM_VERSION" ]; then
-    VER="$(grep -v '^#' "$ROOT_DIR/VSCODIUM_VERSION" | head -1 | tr -d '[:space:]')"
+    # grep exits 1 when the file holds only comments (the "newest release" setting); under
+    # pipefail that used to end the whole build here without a word.
+    VER="$( (grep -v '^#' "$ROOT_DIR/VSCODIUM_VERSION" || true) | head -1 | tr -d '[:space:]')"
 fi
 if [ -z "$VER" ]; then
-    VER="$(curl -fsSL https://api.github.com/repos/VSCodium/vscodium/releases/latest | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
+    # Newest release tag, read from the redirect of the public "latest" page: no API call, so
+    # no anonymous rate limit. The tag is the last path segment of the final URL.
+    VER="$(curl -fsSL --retry 3 -o /dev/null -w '%{url_effective}' \
+        https://github.com/VSCodium/vscodium/releases/latest 2>/dev/null | sed 's#.*/##' || true)"
 fi
+if [ -z "$VER" ] || [ "$VER" = "latest" ]; then
+    VER="$(curl -fsSL --retry 3 ${GITHUB_TOKEN:+-H "Authorization: Bearer $GITHUB_TOKEN"} \
+        https://api.github.com/repos/VSCodium/vscodium/releases/latest 2>/dev/null \
+        | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])' || true)"
+fi
+if [ -z "$VER" ] || [ "$VER" = "latest" ]; then
+    echo "ERROR: could not work out which VSCodium release to install. Put a version (for example 1.99.32562) in the VSCODIUM_VERSION file." >&2
+    exit 1
+fi
+echo "  VSCodium release: $VER"
 DEB="codium_${VER}_arm64.deb"
 DEB_URL="https://github.com/VSCodium/vscodium/releases/download/${VER}/${DEB}"
-curl -fL --retry 5 --retry-delay 5 -o "$WORK_DIR/$DEB" "$DEB_URL"
-curl -fL --retry 5 -o "$WORK_DIR/$DEB.sha256" "$DEB_URL.sha256"
+curl -fSL --retry 5 --retry-delay 5 -o "$WORK_DIR/$DEB" "$DEB_URL" || { echo "ERROR: could not download $DEB_URL" >&2; exit 1; }
+curl -fSL --retry 5 -o "$WORK_DIR/$DEB.sha256" "$DEB_URL.sha256" || { echo "ERROR: could not download $DEB_URL.sha256" >&2; exit 1; }
 EXPECTED="$(cut -d' ' -f1 "$WORK_DIR/$DEB.sha256" | head -1)"
 if [ "$(sha_of "$WORK_DIR/$DEB")" != "$EXPECTED" ]; then
     echo "ERROR: $DEB does not match its published SHA-256" >&2
@@ -195,8 +199,7 @@ ln -sfn /usr/share/codium "$TREE/engines/electron_vscode/app"
 echo "Cleaning..."
 in_tree apt-get clean
 rm -rf "$TREE"/var/lib/apt/lists/* "$TREE"/var/cache/apt/* "$TREE"/var/log/* "$TREE"/tmp/* \
-       "$TREE/usr/bin/qemu-aarch64-static" "$TREE/etc/resolv.conf" "$TREE/usr/sbin/policy-rc.d" \
-       "$TREE/etc/apt/apt.conf.d/99build-root" "$TREE/etc/dpkg/dpkg.cfg.d/99build-fast"
+       "$TREE/usr/bin/qemu-aarch64-static" "$TREE/etc/resolv.conf" "$TREE/usr/sbin/policy-rc.d"
 cleanup
 MOUNTS=()
 
