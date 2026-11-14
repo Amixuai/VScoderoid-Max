@@ -26,7 +26,7 @@ jobs:
     name: Build Debug APK
     needs: codeoss
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       # In the assets- cache key below, because the addons, the glibc shim, the
       # exec interceptor and the trampoline in that cache are compiled with it
@@ -394,10 +394,11 @@ jobs:
       # The Debian system Desktop Mode runs, with the screen stack, the editor and the
       # compilers already installed, packed into the APK so that nothing of it is
       # downloaded on the phone (Master Blueprint, section 5). The arm64 programs are
-      # run on this x86-64 host by qemu-user through binfmt. Its result is cached on
+      # run on this x86-64 host by qemu-user through binfmt (the Ubuntu runner no longer has a
+      # qemu-user-static package, so the tonistiigi/binfmt image registers a static one). Its result is cached on
       # everything that shapes it; the editor release is the VSCODIUM_VERSION file.
       - name: Install the emulator the Desktop Mode system is built under
-        run: sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
+        run: docker run --privileged --rm tonistiigi/binfmt --install arm64
 
       - name: Restore the Desktop Mode system
         id: cache-desktop

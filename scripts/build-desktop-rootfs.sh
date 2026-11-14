@@ -14,7 +14,8 @@ set -euo pipefail
 # WHAT IT DOES
 #   1. Downloads the pinned arm64 Debian base image (pins.json) and checks its SHA-256.
 #   2. Unpacks it as root and enters it with chroot under qemu-user (an x86-64 CI host runs the
-#      arm64 programs through the binfmt handler; `apt install qemu-user-static` provides it).
+#      arm64 programs through the binfmt handler; on CI `docker run --privileged --rm
+#      tonistiigi/binfmt --install arm64` registers it).
 #   3. apt-get installs scripts/desktop-packages.txt: the screen stack, the compilers, everyday tools.
 #   4. Installs the VSCodium arm64 .deb (the Electron editor), after checking the SHA-256 that
 #      VSCodium publishes beside it, then lays out /engines/electron_vscode (Master Blueprint, item 3).
@@ -91,7 +92,7 @@ if [ "$(id -u)" != 0 ]; then
     exit 1
 fi
 if [ ! -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ] && [ "$(uname -m)" != "aarch64" ]; then
-    echo "ERROR: no qemu-aarch64 binfmt handler. On the CI host: apt-get install qemu-user-static binfmt-support" >&2
+    echo "ERROR: no qemu-aarch64 binfmt handler. On the CI host: docker run --privileged --rm tonistiigi/binfmt --install arm64 (or, on Debian, apt-get install qemu-user-static binfmt-support)" >&2
     exit 1
 fi
 
@@ -110,8 +111,16 @@ tar -xpf "$BASE_FILE" -C "$TREE" --strip-components="$BASE_STRIP" --numeric-owne
 
 if [ "$(uname -m)" != "aarch64" ]; then
     QEMU="$(command -v qemu-aarch64-static || true)"
-    [ -n "$QEMU" ] || { echo "ERROR: qemu-aarch64-static not found" >&2; exit 1; }
-    cp "$QEMU" "$TREE/usr/bin/qemu-aarch64-static"
+    if [ -n "$QEMU" ]; then
+        cp "$QEMU" "$TREE/usr/bin/qemu-aarch64-static"
+    elif grep -q '^flags:.*F' /proc/sys/fs/binfmt_misc/qemu-aarch64; then
+        # Registered with the fix-binary flag (tonistiigi/binfmt does this): the kernel already
+        # holds the emulator open, so nothing has to be copied into the tree.
+        echo "  emulator is registered with the F flag; not copied into the tree"
+    else
+        echo "ERROR: qemu-aarch64-static not found and the binfmt handler lacks the F flag" >&2
+        exit 1
+    fi
 fi
 
 mount -t proc proc "$TREE/proc";            MOUNTS+=("$TREE/proc")
@@ -122,7 +131,9 @@ in_tree() { chroot "$TREE" /usr/bin/env -i HOME=/root LANG=C.UTF-8 TERM=dumb DEB
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "$@"; }
 
 # A network for apt, and the repositories this build uses (the app rewrites the same files on first use).
-cp /etc/resolv.conf "$TREE/etc/resolv.conf"
+# Explicit resolvers from pins.json: the runner's own file points at a stub that only exists on the host.
+rm -f "$TREE/etc/resolv.conf"
+python3 -I -c 'import json,sys; print("\n".join("nameserver " + d for d in json.load(open(sys.argv[1]))["dns"]))' "$PINS" > "$TREE/etc/resolv.conf"
 mkdir -p "$TREE/etc/apt/sources.list.d"
 : > "$TREE/etc/apt/sources.list"
 cat > "$TREE/etc/apt/sources.list.d/debian.sources" <<EOF
@@ -140,6 +151,15 @@ Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
 # No service can start in a build tree; a policy of 101 tells maintainer scripts so.
 printf '#!/bin/sh\nexit 101\n' > "$TREE/usr/sbin/policy-rc.d"; chmod 755 "$TREE/usr/sbin/policy-rc.d"
+
+# Build-time apt/dpkg settings, removed again before packing so the shipped system keeps stock behaviour.
+# Root as the APT download user (no privilege drop under emulation); no fsync storms; man pages,
+# info pages and translations are skipped (licence texts in /usr/share/doc stay).
+mkdir -p "$TREE/etc/apt/apt.conf.d" "$TREE/etc/dpkg/dpkg.cfg.d"
+echo 'APT::Sandbox::User "root";' > "$TREE/etc/apt/apt.conf.d/99build-root"
+printf '%s\n' 'force-unsafe-io' 'path-exclude=/usr/share/man/*' 'path-exclude=/usr/share/info/*' \
+    'path-exclude=/usr/share/locale/*' 'path-include=/usr/share/locale/locale.alias' \
+    > "$TREE/etc/dpkg/dpkg.cfg.d/99build-fast"
 
 echo "Installing packages..."
 in_tree apt-get update
@@ -175,7 +195,8 @@ ln -sfn /usr/share/codium "$TREE/engines/electron_vscode/app"
 echo "Cleaning..."
 in_tree apt-get clean
 rm -rf "$TREE"/var/lib/apt/lists/* "$TREE"/var/cache/apt/* "$TREE"/var/log/* "$TREE"/tmp/* \
-       "$TREE/usr/bin/qemu-aarch64-static" "$TREE/etc/resolv.conf" "$TREE/usr/sbin/policy-rc.d"
+       "$TREE/usr/bin/qemu-aarch64-static" "$TREE/etc/resolv.conf" "$TREE/usr/sbin/policy-rc.d" \
+       "$TREE/etc/apt/apt.conf.d/99build-root" "$TREE/etc/dpkg/dpkg.cfg.d/99build-fast"
 cleanup
 MOUNTS=()
 

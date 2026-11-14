@@ -113,6 +113,8 @@ class LaunchRepairWiringTest {
         // there, so ahead of it a launch that had lost both would repair the
         // directory and leave the link for the launch after.
         "createStorageSymlinks",
+        "syncProjectsDirExport",
+        "removeLegacyWelcomeReadme",
         "repairInstalledToolchains",
         "reclaimRevokedMirrors",
     )
