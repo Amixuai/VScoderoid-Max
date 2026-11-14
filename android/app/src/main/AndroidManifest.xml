@@ -185,6 +185,29 @@
                  picker, which does have the sync engine that makes write-back work. -->
         </activity>
 
+        <!-- Desktop Mode: the real desktop editor in a Debian system inside the app,
+             shown through noVNC. It is its own launcher entry, and the existing editor
+             above stays the default. Landscape only, so rotating never resizes the
+             virtual screen (DesktopViewer.geometry). adjustPan keeps the picture at
+             one size while the soft keyboard is up. The fixed colours in
+             activity_desktop.xml are why uiMode is safe to handle here, for the same
+             reason given on SplashActivity. -->
+        <activity
+            android:name=".desktop.DesktopActivity"
+            android:exported="true"
+            android:label="@string/desktop_label"
+            android:launchMode="singleTop"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density"
+            android:windowSoftInputMode="adjustPan"
+            android:theme="@style/Theme.VSCodroid"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Toolchain settings: manage on-demand language toolchains -->
         <activity
             android:name=".ToolchainActivity"
@@ -200,6 +223,16 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Local development server for code editor" />
+        </service>
+
+        <!-- Desktop Mode service: holds the process while the Debian session runs -->
+        <service
+            android:name=".desktop.DesktopService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Local desktop environment for the code editor" />
         </service>
 
     </application>

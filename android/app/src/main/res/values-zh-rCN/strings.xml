@@ -598,4 +598,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">未知</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">正在启动桌面...</string>
+    <string name="desktop_preparing">正在准备 Desktop Mode。这需要几分钟，并且只会进行一次。</string>
+    <string name="desktop_stopping">正在停止桌面...</string>
+    <string name="desktop_not_available">Desktop Mode 需要至少 6 GB 内存的手机，而这台设备的内存更少。</string>
+    <string name="desktop_need_files">请允许访问所有文件，以便您的项目可以存放在工作区文件夹中，然后再次打开 Desktop Mode。</string>
+    <string name="desktop_failed_storage">可用存储空间不足，无法准备 Desktop Mode。请释放一些空间，然后再次打开 Desktop Mode。</string>
+    <string name="desktop_failed">Desktop Mode 无法启动。请再次打开它以重试。</string>
+    <string name="desktop_low_memory">内存不足。如果桌面变慢，请关闭其他应用。</string>
+    <string name="desktop_phantom_help">Android 12 及更高版本可能会停止后台进程，这会使桌面结束。要避免这种情况，请在开发者选项中开启 Disable child process restrictions（Android 14 及更高版本），或将手机连接到电脑并运行：adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">桌面正在运行，并且耗电较多。用完后请停止它。</string>
+    <string name="desktop_action_stop">停止</string>
 </resources>

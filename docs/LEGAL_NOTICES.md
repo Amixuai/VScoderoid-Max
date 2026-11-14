@@ -846,4 +846,4 @@ For questions about licenses, trademarks, or legal notices:
 
 ---
 
-_This document was last updated on October 23, 2026._
+_This document was last updated on November 16, 2026._

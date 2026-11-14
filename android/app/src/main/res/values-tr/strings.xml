@@ -602,4 +602,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">bilinmiyor</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">Masaüstü başlatılıyor...</string>
+    <string name="desktop_preparing">Desktop Mode hazırlanıyor. Bu birkaç dakika sürer ve yalnızca bir kez olur.</string>
+    <string name="desktop_stopping">Masaüstü durduruluyor...</string>
+    <string name="desktop_not_available">Desktop Mode için en az 6 GB RAM\'e sahip bir telefon gerekir ve bunda daha azı var.</string>
+    <string name="desktop_need_files">Projelerinizin çalışma alanı klasöründe durabilmesi için tüm dosyalara erişime izin verin, sonra Desktop Mode\'u yeniden açın.</string>
+    <string name="desktop_failed_storage">Desktop Mode\'u hazırlamak için yeterli boş depolama alanı yok. Biraz yer açın, sonra Desktop Mode\'u yeniden açın.</string>
+    <string name="desktop_failed">Desktop Mode başlatılamadı. Yeniden denemek için tekrar açın.</string>
+    <string name="desktop_low_memory">Bellek azaldı. Masaüstü yavaşlarsa diğer uygulamaları kapatın.</string>
+    <string name="desktop_phantom_help">Android 12 ve sonrası arka plan işlemlerini durdurabilir ve bu masaüstünü sonlandırır. Bunu önlemek için Geliştirici seçenekleri\'nde Disable child process restrictions seçeneğini açın (Android 14 ve sonrası) veya telefonu bir bilgisayara bağlayıp şunu çalıştırın: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">Masaüstü çalışıyor ve pili çok tüketiyor. İşiniz bitince durdurun.</string>
+    <string name="desktop_action_stop">Durdur</string>
 </resources>

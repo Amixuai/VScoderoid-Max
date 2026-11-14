@@ -25,6 +25,7 @@ VSCodroid runs a local VS Code Server on your Android device. The VS Code Web Cl
 - **Mobile-optimized**: extra key row (Ctrl, Alt, Tab, Esc, F1-F12, symbols), touch-friendly UI, clipboard bridge.
 - **Dev server preview**: preview a running dev server beside your code.
 - **Multilingual UI**: follows the phone's language.
+- **Desktop Mode (experimental)**: the real desktop VSCodium running in a Debian system inside the app, with the compilers already installed; a PC in your pocket with nothing app-specific to learn. Needs 6 GB of RAM.
 
 ## Requirements
 

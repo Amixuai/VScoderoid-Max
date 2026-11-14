@@ -14,9 +14,10 @@ A practical guide to using VSCodroid -- the full VS Code IDE running natively on
 6. [Web Development](#web-development)
 7. [Running and Debugging](#running-and-debugging)
 8. [On-demand Toolchains](#on-demand-toolchains)
-9. [Tips and Tricks](#tips-and-tricks)
-10. [Known Limitations](#known-limitations)
-11. [Troubleshooting](#troubleshooting)
+9. [Desktop Mode](#desktop-mode)
+10. [Tips and Tricks](#tips-and-tricks)
+11. [Known Limitations](#known-limitations)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -1010,6 +1011,99 @@ the sensible ceiling on a phone.
 
 Open the Toolchains screen by either route in [Installing After
 Setup](#installing-after-setup) and remove it there.
+
+---
+
+## Desktop Mode
+
+Desktop Mode is the real desktop VSCodium (the Electron build of VS Code that runs on a
+PC) running in a Debian Linux system inside the app. Its screen is shown in the app.
+It is experimental: it has not yet been verified on every device. The editor you
+already use stays the default; Desktop Mode is a second launcher entry named
+**Desktop Mode**.
+
+Desktop Mode is meant to be a PC. There is no button, menu or command in it that a
+laptop does not have, so what you learn here carries over when you move to a computer.
+
+### What You Need
+
+| Requirement | Minimum |
+| ----------- | ------- |
+| Phone       | arm64, Android 11 or newer |
+| RAM         | 6 GB (Desktop Mode is not offered below this) |
+| Storage     | several GB free for the unpacked system, plus your packages |
+
+### Starting It
+
+1. Open **Desktop Mode** from the launcher.
+2. The first time, the app unpacks its Debian system. This takes a few minutes, needs no
+   network, and happens once.
+3. If Android asks for access to all files, allow it: your projects live in the
+   workspace folder on shared storage, as in the normal editor.
+4. The desktop appears with VSCodium open on your workspace.
+
+Leaving the screen with Back keeps the desktop running. Its notification has Android's
+own **Stop** action, which ends it. The desktop uses a lot of battery; stop it when you
+are done.
+
+### Using It
+
+The screen is landscape only. Input is the same as any remote desktop viewer:
+
+- **Tap** is a left click, **long press** is a right click, **two fingers** scroll, and
+  **pinch** zooms the picture.
+- A hardware keyboard works as on a PC. For the on-screen keyboard and the extra keys
+  (Ctrl, Alt, Tab, Esc), use the small side tab at the edge of the screen, which is the
+  viewer's own (noVNC) control, and the same one a PC browser shows.
+- The clipboard is shared through the same side tab.
+
+### What Is Inside
+
+Everything is already installed, with nothing to download and no command to run first:
+gcc and g++, make and cmake, Python 3 with venv and pip, Node.js with npm, PHP, Go, Rust
+with cargo, SQLite and Git. Only the packages you install yourself (`npm install`,
+`pip install`, `cargo build` and so on) come from your own commands, as on a PC.
+
+Extensions come from Open VSX, the same registry the normal editor uses.
+
+### Where Your Files Are
+
+Your projects are in the hidden folder `.VScoderoid-Pro` on shared storage (turn on
+"show hidden files" in your file manager to see it), and appear inside the desktop as
+`/root/workspace`. Folders such as `node_modules`, `.venv`, `target` and `vendor` are
+kept in private storage and appear in your project at the usual path, because shared
+storage cannot hold symbolic links or executable files.
+
+### Commands
+
+The terminal is a normal Debian bash. Linux commands and commands common to every
+system run as they are. A few Windows and macOS names are mapped to their Linux
+equivalent so a mixed habit still works: `cls`, `copy`, `move`, `del`, `erase`, `md`,
+`rd`, `where`, `findstr`, `tasklist`, `ipconfig`, `dir`, `open`, `pbcopy` and `pbpaste`.
+Only the name is mapped. Windows switches such as `/s` are not translated, and macOS
+tools differ from the GNU ones in places an alias cannot hide, for example
+`sed -i ''`. Nothing in Desktop Mode adds a command that exists only in this app.
+
+### If the Desktop Stops in the Background
+
+Android 12 and newer can stop an app's background processes. If the desktop ends when you
+leave it, turn on **Disable child process restrictions** in Developer options (Android
+14 and newer), or run this from a computer with the phone connected:
+
+```
+adb shell device_config put activity_manager max_phantom_processes 2147483647
+```
+
+The app shows this once, the first time the desktop starts.
+
+### Known Limits of Desktop Mode
+
+- Landscape only, no portrait.
+- Software rendering: no GPU, so heavy animation is slow. Smooth scrolling is off by
+  default.
+- No sound.
+- Closing the editor window leaves an empty desktop, as on a PC; stop and start Desktop
+  Mode to bring it back.
 
 ---
 

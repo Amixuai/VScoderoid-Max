@@ -68,6 +68,7 @@ class DesktopLauncher(
         storage.ensurePrivateTree()
         storage.ensurePublicTree()
         storage.cleanOrphans()
+        rotateLog()
         val plan = storage.plan()
         val password = newPassword()
         val remembered = fallbackMarker.isFile
@@ -206,6 +207,19 @@ class DesktopLauncher(
         return process.exitValue()
     }
 
+    /** Keeps the app's own session log from growing without end: over 1 MiB, only the last 256 KiB stay. */
+    private fun rotateLog() {
+        runCatching {
+            if (logFile.length() <= LOG_LIMIT_BYTES) return
+            val keep = ByteArray(LOG_KEEP_BYTES)
+            val read = logFile.inputStream().use { input ->
+                input.skip(logFile.length() - LOG_KEEP_BYTES)
+                input.read(keep)
+            }
+            logFile.writeBytes(keep.copyOf(maxOf(read, 0)))
+        }
+    }
+
     private fun logTail(): String =
         runCatching { logFile.readText().takeLast(DETAIL_LIMIT).replace('\n', ' ') }.getOrDefault("(no log)")
 
@@ -233,6 +247,8 @@ class DesktopLauncher(
         private const val REPAIR_TIMEOUT_SECONDS = 1800L
         private const val POLL_MS = 500L
         private const val DETAIL_LIMIT = 400
+        private const val LOG_LIMIT_BYTES = 1_048_576L
+        private const val LOG_KEEP_BYTES = 262_144
 
         /** Variables of the app's own environment that must not reach proot or the script. */
         private val DROP = listOf(

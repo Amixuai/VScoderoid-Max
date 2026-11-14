@@ -610,4 +610,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">nieznana</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">Uruchamianie pulpitu...</string>
+    <string name="desktop_preparing">Przygotowywanie Desktop Mode. Trwa to kilka minut i dzieje się tylko raz.</string>
+    <string name="desktop_stopping">Zatrzymywanie pulpitu...</string>
+    <string name="desktop_not_available">Desktop Mode wymaga telefonu z co najmniej 6 GB RAM, a ten ma mniej.</string>
+    <string name="desktop_need_files">Zezwól na dostęp do wszystkich plików, aby Twoje projekty mogły znajdować się w folderze obszaru roboczego, a potem otwórz Desktop Mode ponownie.</string>
+    <string name="desktop_failed_storage">Brakuje wolnej pamięci, aby przygotować Desktop Mode. Zwolnij miejsce, a potem otwórz Desktop Mode ponownie.</string>
+    <string name="desktop_failed">Nie udało się uruchomić Desktop Mode. Otwórz go ponownie, aby spróbować jeszcze raz.</string>
+    <string name="desktop_low_memory">Mało pamięci. Jeśli pulpit zwolni, zamknij inne aplikacje.</string>
+    <string name="desktop_phantom_help">Android 12 i nowszy może zatrzymywać procesy w tle, co zakończyłoby pulpit. Aby temu zapobiec, włącz Disable child process restrictions w opcjach programisty (Android 14 i nowszy) albo podłącz telefon do komputera i uruchom: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">Pulpit działa i mocno obciąża baterię. Zatrzymaj go, gdy skończysz.</string>
+    <string name="desktop_action_stop">Zatrzymaj</string>
 </resources>

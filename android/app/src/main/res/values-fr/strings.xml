@@ -606,4 +606,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">inconnue</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">Démarrage du bureau...</string>
+    <string name="desktop_preparing">Préparation de Desktop Mode. Cela prend quelques minutes et ne se produit qu\'une seule fois.</string>
+    <string name="desktop_stopping">Arrêt du bureau...</string>
+    <string name="desktop_not_available">Desktop Mode nécessite un téléphone avec au moins 6 Go de RAM, et celui-ci en a moins.</string>
+    <string name="desktop_need_files">Autorisez l\'accès à tous les fichiers pour que vos projets puissent se trouver dans le dossier de l\'espace de travail, puis rouvrez Desktop Mode.</string>
+    <string name="desktop_failed_storage">Il n\'y a pas assez de stockage libre pour préparer Desktop Mode. Libérez de l\'espace, puis rouvrez Desktop Mode.</string>
+    <string name="desktop_failed">Desktop Mode n\'a pas pu démarrer. Rouvrez-le pour réessayer.</string>
+    <string name="desktop_low_memory">La mémoire est faible. Fermez d\'autres applications si le bureau ralentit.</string>
+    <string name="desktop_phantom_help">Android 12 et les versions ultérieures peuvent arrêter les processus en arrière-plan, ce qui mettrait fin au bureau. Pour l\'éviter, activez Disable child process restrictions dans les options pour les développeurs (Android 14 et ultérieur), ou connectez le téléphone à un ordinateur et exécutez : adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">Le bureau est en cours d\'exécution et consomme beaucoup de batterie. Arrêtez-le lorsque vous avez terminé.</string>
+    <string name="desktop_action_stop">Arrêter</string>
 </resources>

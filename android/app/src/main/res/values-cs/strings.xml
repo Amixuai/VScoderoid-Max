@@ -610,4 +610,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">neznámá</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">Spouštím plochu...</string>
+    <string name="desktop_preparing">Připravuji Desktop Mode. Trvá to několik minut a děje se to jen jednou.</string>
+    <string name="desktop_stopping">Zastavuji plochu...</string>
+    <string name="desktop_not_available">Desktop Mode vyžaduje telefon s alespoň 6 GB RAM a tento jich má méně.</string>
+    <string name="desktop_need_files">Povolte přístup ke všem souborům, aby vaše projekty mohly být ve složce pracovního prostoru, a pak znovu otevřete Desktop Mode.</string>
+    <string name="desktop_failed_storage">Pro přípravu Desktop Mode není dost volného úložiště. Uvolněte místo a pak znovu otevřete Desktop Mode.</string>
+    <string name="desktop_failed">Desktop Mode se nepodařilo spustit. Otevřete ho znovu a zkuste to znovu.</string>
+    <string name="desktop_low_memory">Málo paměti. Pokud se plocha zpomalí, zavřete ostatní aplikace.</string>
+    <string name="desktop_phantom_help">Android 12 a novější může ukončit procesy na pozadí, čímž by plocha skončila. Zabráníte tomu zapnutím možnosti Disable child process restrictions ve Vývojářských možnostech (Android 14 a novější), nebo připojte telefon k počítači a spusťte: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">Plocha běží a výrazně zatěžuje baterii. Až skončíte, zastavte ji.</string>
+    <string name="desktop_action_stop">Zastavit</string>
 </resources>

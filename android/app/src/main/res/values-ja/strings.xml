@@ -598,4 +598,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">不明</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">デスクトップを起動しています...</string>
+    <string name="desktop_preparing">Desktop Mode を準備しています。数分かかりますが、初回のみです。</string>
+    <string name="desktop_stopping">デスクトップを停止しています...</string>
+    <string name="desktop_not_available">Desktop Mode には 6 GB 以上の RAM を搭載したスマートフォンが必要です。この端末はそれより少ないです。</string>
+    <string name="desktop_need_files">プロジェクトをワークスペースフォルダーに置けるよう、すべてのファイルへのアクセスを許可してから、Desktop Mode をもう一度開いてください。</string>
+    <string name="desktop_failed_storage">Desktop Mode を準備するための空き容量が足りません。空き容量を確保してから、Desktop Mode をもう一度開いてください。</string>
+    <string name="desktop_failed">Desktop Mode を起動できませんでした。もう一度開いて再試行してください。</string>
+    <string name="desktop_low_memory">メモリが不足しています。デスクトップが遅くなったら、他のアプリを閉じてください。</string>
+    <string name="desktop_phantom_help">Android 12 以降ではバックグラウンドのプロセスが停止されることがあり、デスクトップが終了してしまいます。防ぐには、開発者向けオプションで Disable child process restrictions をオンにするか(Android 14 以降)、スマートフォンをコンピューターに接続して次を実行します: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">デスクトップが実行中で、バッテリーを多く消費します。使い終わったら停止してください。</string>
+    <string name="desktop_action_stop">停止</string>
 </resources>

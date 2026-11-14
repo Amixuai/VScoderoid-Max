@@ -193,6 +193,9 @@ jobs:
       - name: Check the Desktop Mode command aliases shadow nothing
         run: python3 scripts/check-desktop-aliases.py
 
+      - name: Check Desktop Mode adds nothing a PC does not have
+        run: python3 scripts/check-desktop-parity.py
+
       # Beside `Run lint` rather than inside it, and the pairing is the point:
       # lint's own HardcodedText detector reads layouts and nothing else, so a
       # message raised from Kotlin has never been anyone's to catch. Reads the

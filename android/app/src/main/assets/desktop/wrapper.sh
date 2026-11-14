@@ -64,12 +64,27 @@ desktop_clean_locks() {
           "$DESKTOP_ROOT/root/.vnc/passwd"
 }
 
+# Keeps the guest's own logs from growing without end: any log under the tree's /tmp
+# over 1 MiB is cut to its last 256 KiB. Runs before the session starts, when nothing
+# holds them open. No log ever contains the session secret.
+desktop_rotate_logs() {
+    local f size
+    for f in "$DESKTOP_ROOT"/tmp/*.log; do
+        [ -f "$f" ] || continue
+        size=$(wc -c < "$f" 2>/dev/null) || continue
+        if [ "${size:-0}" -gt 1048576 ]; then
+            tail -c 262144 "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+        fi
+    done
+}
+
 # Runs the whole session in ONE proot, so that the virtual screen, the window
 # manager and the web bridge end together when it ends. Does not return until
 # the session is over; the app holds the process and stops it by signal.
 desktop_start() {
     desktop_stop >/dev/null 2>&1
     desktop_clean_locks
+    desktop_rotate_logs
     mkdir -p "$DESKTOP_ROOT/root/.vnc" "$DESKTOP_ROOT/tmp"
     exec_session
 }
@@ -89,7 +104,7 @@ unset VNC_PW
 export DISPLAY=:1
 rm -f /tmp/.X1-lock /tmp/.X11-unix/X1
 Xtigervnc :1 -geometry "$GEOMETRY" -depth 24 -localhost yes -rfbport '"$DESKTOP_PORT_VNC"' \
-    -rfbauth /root/.vnc/passwd -SecurityTypes VncAuth >/tmp/xvnc.log 2>&1 &
+    -rfbauth /root/.vnc/passwd -SecurityTypes VncAuth -FrameRate 30 >/tmp/xvnc.log 2>&1 &
 i=0
 while [ $i -lt 40 ]; do
     (exec 3<>/dev/tcp/127.0.0.1/'"$DESKTOP_PORT_VNC"') 2>/dev/null && break
@@ -97,6 +112,28 @@ while [ $i -lt 40 ]; do
 done
 openbox >/tmp/openbox.log 2>&1 &
 websockify --web /usr/share/novnc 127.0.0.1:'"$DESKTOP_PORT_WEB"' 127.0.0.1:'"$DESKTOP_PORT_VNC"' >/tmp/websockify.log 2>&1 &
+# The editor (work package WP4). Plain VSCodium, started the way a PC desktop would
+# start it, with the flags Electron needs inside proot and nothing else: no heap or
+# memory flags (Master Blueprint section 2 is not implemented). It is the one
+# window; closing it leaves the desktop, as on a PC.
+mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions
+if [ ! -e /root/.config/VSCodium/User/settings.json ]; then
+cat > /root/.config/VSCodium/User/settings.json <<JSON
+{
+  "editor.smoothScrolling": false,
+  "workbench.list.smoothScrolling": false,
+  "terminal.integrated.smoothScrolling": false,
+  "workbench.reduceMotion": "on"
+}
+JSON
+fi
+if [ -x /usr/share/codium/codium ]; then
+    sleep 1
+    /usr/share/codium/codium --no-sandbox --disable-gpu --disable-dev-shm-usage \
+        --no-zygote --disable-setuid-sandbox --ozone-platform=x11 --password-store=basic \
+        --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions \
+        /root/workspace >/tmp/codium.log 2>&1 &
+fi
 wait
 '
 }

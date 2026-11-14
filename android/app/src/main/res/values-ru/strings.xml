@@ -610,4 +610,17 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">неизвестно</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_starting">Запуск рабочего стола...</string>
+    <string name="desktop_preparing">Подготовка Desktop Mode. Это займёт несколько минут и произойдёт только один раз.</string>
+    <string name="desktop_stopping">Остановка рабочего стола...</string>
+    <string name="desktop_not_available">Для Desktop Mode нужен телефон с оперативной памятью не менее 6 ГБ, а у этого её меньше.</string>
+    <string name="desktop_need_files">Разрешите доступ ко всем файлам, чтобы ваши проекты могли храниться в папке рабочего пространства, и снова откройте Desktop Mode.</string>
+    <string name="desktop_failed_storage">Недостаточно свободного места для подготовки Desktop Mode. Освободите место и снова откройте Desktop Mode.</string>
+    <string name="desktop_failed">Не удалось запустить Desktop Mode. Откройте его снова, чтобы повторить попытку.</string>
+    <string name="desktop_low_memory">Мало памяти. Если рабочий стол начнёт тормозить, закройте другие приложения.</string>
+    <string name="desktop_phantom_help">Android 12 и новее могут останавливать фоновые процессы, из-за чего рабочий стол завершится. Чтобы этого избежать, включите Disable child process restrictions в параметрах разработчика (Android 14 и новее) или подключите телефон к компьютеру и выполните: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">Рабочий стол запущен и сильно расходует заряд батареи. Остановите его, когда закончите.</string>
+    <string name="desktop_action_stop">Остановить</string>
 </resources>

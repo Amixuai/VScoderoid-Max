@@ -597,3 +597,22 @@ colour probe's own WebView records nothing.
 | SCM | Git from Termux, as `libgit.so` and `libgit-remote-curl.so` plus `usr/lib/git-core` | Whatever the Termux index names at build time |
 | Python | Python 3 from Termux, fetched by `scripts/download-python.sh` | Whatever the Termux index names at build time; read it from `assets/usr/lib/libpython*.so` |
 | C++ stdlib | `libc++_shared.so` from Termux's `libc++` package, in `assets/usr/lib` | Whatever `scripts/download-termux-tools.sh` resolves |
+
+## Desktop Mode (experimental)
+
+A second launcher entry opens `DesktopActivity`, a landscape screen holding one web view
+that shows noVNC served from the Debian system inside the app. Components, all under
+`com.vscodroid.desktop`:
+
+- `DesktopManager` owns the state (`DesktopStateMachine`, persisted) and the session
+  secret, which never leaves memory. The screen and the service both talk to it.
+- `DesktopService` is a foreground service of type specialUse that keeps the process
+  alive while the desktop runs; its notification carries Android's Stop action.
+- `RootfsProvisioner` unpacks `assets/desktop/rootfs.tar.xz` into `debian_rootfs`;
+  `DesktopLauncher` runs `assets/desktop/wrapper.sh`, which starts Xtigervnc, openbox,
+  websockify and VSCodium inside one proot.
+- `DesktopStorage` keeps heavy project folders in private storage and binds them into the
+  public workspace.
+
+The desktop has no controls of its own: PC parity is the product rule, and
+`scripts/check-desktop-parity.py` guards the parts of it a text check can see. The device checklist is `docs/DESKTOP_DEVICE_CHECKLIST.md`.

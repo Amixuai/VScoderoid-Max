@@ -610,4 +610,18 @@
          tls_unknown_host stands in for an address. Written in Kotlin before, so
          one English word survived inside an otherwise translated About dialog. -->
     <string name="about_version_unknown">unknown</string>
+
+    <!-- Desktop Mode (work packages WP5 to WP7). -->
+    <string name="desktop_label" translatable="false">Desktop Mode</string>
+    <string name="desktop_starting">Starting the desktop...</string>
+    <string name="desktop_preparing">Preparing Desktop Mode. This takes a few minutes and only happens once.</string>
+    <string name="desktop_stopping">Stopping the desktop...</string>
+    <string name="desktop_not_available">Desktop Mode needs a phone with at least 6 GB of RAM, and this one has less.</string>
+    <string name="desktop_need_files">Allow access to all files so your projects can live in the workspace folder, then open Desktop Mode again.</string>
+    <string name="desktop_failed_storage">There is not enough free storage to prepare Desktop Mode. Free some space, then open Desktop Mode again.</string>
+    <string name="desktop_failed">Desktop Mode could not start. Open it again to retry.</string>
+    <string name="desktop_low_memory">Memory is low. Close other apps if the desktop gets slow.</string>
+    <string name="desktop_phantom_help">Android 12 and newer can stop background processes, which would end the desktop. To prevent that, turn on Disable child process restrictions in Developer options (Android 14 and newer), or connect the phone to a computer and run: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
+    <string name="desktop_notification_text">The desktop is running and uses a lot of battery. Stop it when you are done.</string>
+    <string name="desktop_action_stop">Stop</string>
 </resources>
