@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only. Merged on top of src/main and never into a release build,
+     so the receiver below reaches no shipped manifest. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Drives the Desktop Mode work packages from the app's own terminal:
+             `am broadcast -n com.vscodroid.debug/com.vscodroid.debug.DesktopDebugReceiver -a <action>`.
+             Not exported, so another app cannot reach it; the app's own uid, which
+             is what its terminal runs as, can. -->
+        <receiver
+            android:name="com.vscodroid.debug.DesktopDebugReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.vscodroid.debug.DESKTOP_PROVISION" />
+                <action android:name="com.vscodroid.debug.DESKTOP_CHECK" />
+                <action android:name="com.vscodroid.debug.DESKTOP_STACK" />
+                <action android:name="com.vscodroid.debug.DESKTOP_START" />
+                <action android:name="com.vscodroid.debug.DESKTOP_STOP" />
+                <action android:name="com.vscodroid.debug.DESKTOP_STATUS" />
+                <action android:name="com.vscodroid.debug.DESKTOP_STORAGE_TEST" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desktop Mode start screen: only a status line while the desktop comes up (the picture
+     itself is the Termux:X11 screen). No toolbar, no buttons (the product rule is PC
+     parity, nothing that exists only here). keepScreenOn: a desktop does not sleep
+     while you are looking at it. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:keepScreenOn="true"
+    tools:ignore="Overdraw">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <ProgressBar
+            android:id="@+id/desktop_progress"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:indeterminateTint="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/desktop_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <!-- Why a start failed, in the words of the logs. Shown only on failure, so a
+             failure can be reported from a screenshot; there is no other way to read a
+             private log on a phone. Selectable text, not a control. -->
+        <TextView
+            android:id="@+id/desktop_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#B0B0B0"
+            android:textIsSelectable="true"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:ignore="SmallSp" />
+    </LinearLayout>
+</FrameLayout>

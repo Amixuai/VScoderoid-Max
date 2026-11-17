@@ -1,0 +1,184 @@
+package com.vscodroid.desktop
+
+import android.app.AlertDialog
+import android.content.ComponentCallbacks2
+import android.content.Intent
+import android.os.Bundle
+import android.os.SystemClock
+import android.view.View
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.vscodroid.R
+import com.vscodroid.storage.PublicWorkspace
+
+/**
+ * The Desktop Mode screen (brief WP5): the real desktop editor, shown through Termux:X11.
+ *
+ * While the desktop starts this screen is one line of status text and a progress wheel.
+ * Once the X server and the guest are up it opens the Termux:X11 screen (a library in
+ * this app, [DesktopViewer.X11_ACTIVITY]) and gets out of the way, so the picture is
+ * the whole display with no toolbar, button or menu of ours. Input is Termux:X11's own
+ * touch handling plus the keyboard. Leaving with Back keeps the desktop running (this
+ * screen then closes itself); Android's own notification Stop action ends it.
+ *
+ * The screen is locked to landscape.
+ *
+ * STATUS: UNTESTED. Written without an Android SDK; not compiled, not run.
+ */
+class DesktopActivity : AppCompatActivity() {
+
+    private lateinit var status: TextView
+    private var x11Opened = false
+    private var lastMemoryWarning = 0L
+    private var needsFilesPromptShown = false
+
+    private val listener = DesktopManager.Listener { render() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_desktop)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        status = findViewById(R.id.desktop_status)
+        DesktopManager.attach(this)
+        DesktopManager.addListener(listener)
+        render()
+        requestStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemBars()
+        // Back from the all-files screen: try again if the user allowed it.
+        if (needsFilesPromptShown && PublicWorkspace.hasAllFilesAccess()) {
+            needsFilesPromptShown = false
+            requestStart()
+        }
+        // Back from the Termux:X11 screen: the desktop keeps running, and so leaving it
+        // leaves this screen too (opening Desktop Mode again brings the picture back).
+        if (x11Opened) finish()
+    }
+
+    override fun onDestroy() {
+        DesktopManager.removeListener(listener)
+        super.onDestroy()
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        val now = SystemClock.elapsedRealtime()
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW &&
+            DesktopManager.state == DesktopState.Running &&
+            now - lastMemoryWarning > MEMORY_WARNING_GAP_MS
+        ) {
+            lastMemoryWarning = now
+            Toast.makeText(this, R.string.desktop_low_memory, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // ----------------------------------------------------------------------------
+
+    private fun requestStart() {
+        val state = DesktopManager.state
+        if (state == DesktopState.NotAvailable) return
+        ContextCompat.startForegroundService(this, Intent(this, DesktopService::class.java))
+    }
+
+    private fun render() {
+        val state = DesktopManager.state
+        val message = when (state) {
+            DesktopState.NotAvailable -> R.string.desktop_not_available
+            DesktopState.NotInstalled, DesktopState.Ready, DesktopState.Starting -> R.string.desktop_starting
+            DesktopState.Downloading, DesktopState.Extracting, DesktopState.Provisioning -> R.string.desktop_preparing
+            DesktopState.Stopping -> R.string.desktop_stopping
+            DesktopState.Failed -> when (DesktopManager.lastFailure?.kind) {
+                DesktopManager.FailureKind.NeedsAllFilesAccess -> R.string.desktop_need_files
+                DesktopManager.FailureKind.NotEnoughStorage -> R.string.desktop_failed_storage
+                else -> R.string.desktop_failed
+            }
+            DesktopState.Running -> null
+        }
+        if (message != null) {
+            status.setText(message)
+            status.visibility = View.VISIBLE
+            findViewById<View>(R.id.desktop_progress).visibility =
+                if (state == DesktopState.Failed || state == DesktopState.NotAvailable) View.GONE else View.VISIBLE
+            val detail = findViewById<TextView>(R.id.desktop_detail)
+            val reason = DesktopManager.lastFailure?.detail.orEmpty()
+            val showDetail = state == DesktopState.Failed && reason.isNotBlank() &&
+                DesktopManager.lastFailure?.kind == DesktopManager.FailureKind.Other
+            detail.text = if (showDetail) reason.take(DETAIL_CHARS) else ""
+            detail.visibility = if (showDetail) View.VISIBLE else View.GONE
+            if (state == DesktopState.Failed &&
+                DesktopManager.lastFailure?.kind == DesktopManager.FailureKind.NeedsAllFilesAccess
+            ) {
+                askForAllFilesAccess()
+            }
+            return
+        }
+        status.visibility = View.GONE
+        findViewById<View>(R.id.desktop_detail).visibility = View.GONE
+        findViewById<View>(R.id.desktop_progress).visibility = View.GONE
+        if (!x11Opened) openDisplay()
+    }
+
+    /** Opens the Termux:X11 screen once per visit, after setting its preferences the first time. */
+    private fun openDisplay() {
+        x11Opened = true
+        val marker = getSharedPreferences("desktop_mode", MODE_PRIVATE)
+        if (!marker.getBoolean(KEY_SCREEN_PREFS_SET, false)) {
+            // The file Termux:X11's settings screen reads (the default preferences of this app).
+            getSharedPreferences("${packageName}_preferences", MODE_PRIVATE).edit {
+                for ((key, value) in DesktopViewer.SCREEN_PREFERENCES) {
+                    when (value) {
+                        is Boolean -> putBoolean(key, value)
+                        is String -> putString(key, value)
+                    }
+                }
+            }
+            marker.edit { putBoolean(KEY_SCREEN_PREFS_SET, true) }
+        }
+        showPhantomHelpOnce()
+        startActivity(Intent().setClassName(packageName, DesktopViewer.X11_ACTIVITY))
+    }
+
+    /** The system screen where the user allows all-files access; asked once per visit. */
+    private fun askForAllFilesAccess() {
+        if (needsFilesPromptShown) return
+        needsFilesPromptShown = true
+        for (intent in PublicWorkspace.allFilesAccessIntents(this)) {
+            if (runCatching { startActivity(intent) }.isSuccess) return
+        }
+    }
+
+    /** One system dialog, once: Android 12 and newer may stop the desktop's background processes. */
+    private fun showPhantomHelpOnce() {
+        val prefs = getSharedPreferences("desktop_mode", MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_PHANTOM_HELP_SHOWN, false)) return
+        prefs.edit { putBoolean(KEY_PHANTOM_HELP_SHOWN, true) }
+        AlertDialog.Builder(this)
+            .setMessage(R.string.desktop_phantom_help)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun hideSystemBars() {
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private companion object {
+        const val KEY_PHANTOM_HELP_SHOWN = "phantom_help_shown"
+        const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set"
+        const val DETAIL_CHARS = 1200
+        const val MEMORY_WARNING_GAP_MS = 5 * 60 * 1000L
+    }
+}

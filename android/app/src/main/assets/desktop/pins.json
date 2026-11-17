@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "suite": "trixie",
+  "rootfs": {
+    "url": "https://github.com/termux/proot-distro/releases/download/v4.29.0/debian-trixie-aarch64-pd-v4.29.0.tar.xz",
+    "sha256": "3834a11cbc6496935760bdc20cca7e2c25724d0cd8f5e4926da8fd5ca1857918",
+    "bytes": 35409704,
+    "strip_components": 1,
+    "unpacked_bytes_estimate": 600000000
+  },
+  "dns": ["1.1.1.1", "8.8.8.8"],
+  "mirror": "http://deb.debian.org/debian",
+  "security_mirror": "http://deb.debian.org/debian-security"
+}
