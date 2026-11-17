@@ -397,7 +397,10 @@ jobs:
       # run on this x86-64 host by qemu-user through binfmt. Its result is cached on
       # everything that shapes it; the editor release is the VSCODIUM_VERSION file.
       - name: Install the emulator the Desktop Mode system is built under
-        run: sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
+        # The static emulator comes from a container image (the apt package qemu-user-static
+        # is gone on newer runner images); it registers with the F flag, which the image
+        # build script accepts in place of a copied binary.
+        run: docker run --privileged --rm tonistiigi/binfmt --install arm64
 
       - name: Restore the Desktop Mode system
         id: cache-desktop
