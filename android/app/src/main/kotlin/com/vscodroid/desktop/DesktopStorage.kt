@@ -88,6 +88,14 @@ class DesktopStorage(
         val binds = ArrayList<Bind>()
         val skipped = ArrayList<Skipped>()
         binds += Bind(publicRoot, GUEST_WORKSPACE)
+        // The phone's shared storage, at the same paths the host uses, so a file chosen anywhere
+        // there opens with the same path it has on Android.
+        for (shared in SHARED_STORAGE) {
+            val dir = File(shared)
+            if (!dir.isDirectory) continue
+            File(rootfsDir, shared.removePrefix("/")).mkdirs()
+            binds += Bind(dir, shared)
+        }
         binds += globalBinds()
         val projects = publicRoot.listFiles { f -> f.isDirectory && !java.nio.file.Files.isSymbolicLink(f.toPath()) }
             ?.sortedBy { it.name }.orEmpty()
@@ -142,6 +150,7 @@ class DesktopStorage(
 
     companion object {
         const val GUEST_WORKSPACE = "/root/workspace"
+        private val SHARED_STORAGE = listOf("/storage/emulated/0", "/sdcard")
         private const val PROJECT_FILE = ".project"
 
         /**

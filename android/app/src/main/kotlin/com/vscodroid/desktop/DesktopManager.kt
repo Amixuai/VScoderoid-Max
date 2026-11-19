@@ -229,7 +229,7 @@ object DesktopManager {
             }
             is RootfsProvisioner.Result.InsufficientStorage ->
                 fail(Failure(FailureKind.NotEnoughStorage, "need ${result.neededBytes}, have ${result.availableBytes}"))
-            else -> fail(Failure(FailureKind.Other, result.toString().take(300)))
+            else -> fail(Failure(FailureKind.Other, describe(result)))
         }
         return false
     }
@@ -284,6 +284,16 @@ object DesktopManager {
     private fun move(next: DesktopState) {
         if (machine?.transition(next) == true) notifyListeners()
     }
+
+    /** The reason for a failed setup, in words, for the failure screen. */
+    private fun describe(r: RootfsProvisioner.Result): String = when (r) {
+        is RootfsProvisioner.Result.Network -> "Download failed: ${r.detail}"
+        is RootfsProvisioner.Result.HashMismatch -> "The downloaded file is damaged (checksum differs). It was deleted; open Desktop Mode again."
+        is RootfsProvisioner.Result.ExtractFailed -> "Unpacking failed: ${r.detail}"
+        is RootfsProvisioner.Result.ConfigureFailed -> "Setting up failed: ${r.detail}"
+        RootfsProvisioner.Result.NotPinned -> "This build has no download address for the system."
+        else -> r.toString()
+    }.take(300)
 
     private fun fail(failure: Failure) {
         lastFailure = failure

@@ -239,7 +239,7 @@ class RootfsProvisioner(
             connection.readTimeout = READ_TIMEOUT_MS
             connection.instanceFollowRedirects = true
             val code = connection.responseCode
-            if (code in 400..499 && code != 408 && code != 429) throw PermanentFailure("HTTP $code")
+            if (code in 400..499 && code != 408 && code != 429) throw PermanentFailure("HTTP $code at $url")
             if (code != HttpURLConnection.HTTP_OK) throw IOException("HTTP $code")
             return connection.inputStream.use { input ->
                 val out = java.io.ByteArrayOutputStream()
@@ -339,7 +339,7 @@ class RootfsProvisioner(
                     throw IOException("range not satisfiable")
                 }
                 else -> {
-                    if (code in 400..499 && code != 408 && code != 429) throw PermanentFailure("HTTP $code")
+                    if (code in 400..499 && code != 408 && code != 429) throw PermanentFailure("HTTP $code at ${m.url}")
                     throw IOException("HTTP $code")
                 }
             }
