@@ -45,6 +45,9 @@ class DesktopActivity : AppCompatActivity() {
 
     private val listener = DesktopManager.Listener { render() }
 
+    /** Opened by the app's first start to fetch the system: it closes itself when the system is ready. */
+    private val setupOnly: Boolean get() = intent?.getBooleanExtra(EXTRA_SETUP_ONLY, false) == true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_desktop)
@@ -57,7 +60,7 @@ class DesktopActivity : AppCompatActivity() {
         DesktopManager.attach(this)
         DesktopManager.addListener(listener)
         render()
-        requestStart()
+        if (setupOnly) DesktopManager.prefetch(this) else requestStart()
     }
 
     override fun onResume() {
@@ -117,7 +120,9 @@ class DesktopActivity : AppCompatActivity() {
             return
         }
         // Prepared in the background (or just now): start the desktop once the system is there.
-        if (state == DesktopState.Ready && !x11Opened) requestStart()
+        if (state == DesktopState.Ready && !x11Opened) {
+            if (setupOnly) finish() else requestStart()
+        }
         val message = when (state) {
             DesktopState.NotAvailable -> R.string.desktop_not_available
             DesktopState.NotInstalled, DesktopState.Ready, DesktopState.Starting -> R.string.desktop_starting
@@ -272,10 +277,13 @@ class DesktopActivity : AppCompatActivity() {
         }
     }
 
-    private companion object {
-        const val KEY_PHANTOM_HELP_SHOWN = "phantom_help_shown"
-        const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set_v2"
-        const val DETAIL_CHARS = 1200
-        const val MEMORY_WARNING_GAP_MS = 5 * 60 * 1000L
+    companion object {
+        /** Intent extra: opened by the app's first start to fetch the system, then close. */
+        const val EXTRA_SETUP_ONLY = "setup_only"
+
+        private const val KEY_PHANTOM_HELP_SHOWN = "phantom_help_shown"
+        private const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set_v2"
+        private const val DETAIL_CHARS = 1200
+        private const val MEMORY_WARNING_GAP_MS = 5 * 60 * 1000L
     }
 }

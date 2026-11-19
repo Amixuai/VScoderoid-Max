@@ -1036,8 +1036,9 @@ laptop does not have, so what you learn here carries over when you move to a com
 
 ### Starting It
 
-1. The first time you open the app, it starts downloading the Desktop Mode system in the
-   background. Nothing is bundled in the app itself, so the app stays small.
+1. The first time you open the app, the setup screen opens by itself over the editor and
+   downloads the Desktop Mode system. Nothing is bundled in the app itself, so the app stays
+   small. Back or Cancel returns to the editor; the download continues next time.
 2. Open **Desktop Mode** from the app icon's shortcut. A portrait screen shows the download
    (size, speed, time left), then a separate bar for setting up the environment. If the
    network drops, it waits and continues from where it stopped, even hours later. **Cancel**

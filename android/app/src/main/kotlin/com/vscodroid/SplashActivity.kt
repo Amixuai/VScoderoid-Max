@@ -1123,7 +1123,14 @@ class SplashActivity : AppCompatActivity() {
                     .setIntent(Intent(this, DesktopActivity::class.java).setAction(Intent.ACTION_VIEW))
                     .build(),
             )
-            DesktopManager.prefetch(applicationContext)
+            // First start (or not finished yet): show the setup screen with the real progress. It
+            // closes itself when the system is ready; Back or Cancel returns to the editor, and the
+            // download continues next time from the same byte.
+            if (DesktopManager.state == DesktopState.NotInstalled || DesktopManager.state == DesktopState.Failed) {
+                startActivity(
+                    Intent(this, DesktopActivity::class.java).putExtra(DesktopActivity.EXTRA_SETUP_ONLY, true),
+                )
+            }
         } catch (e: Exception) {
             Logger.w(tag, "Could not start the Desktop Mode setup: ${e.message}")
         }
