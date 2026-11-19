@@ -30,7 +30,16 @@ data class DesktopPins(
     val dns: List<String>,
     val mirror: String,
     val securityMirror: String,
+    /**
+     * Where the app finds the ready-made Desktop Mode system to download (a small JSON file
+     * published beside the archive by CI). Empty in a build that has none; the app then says
+     * Desktop Mode is not available instead of guessing a URL.
+     */
+    val manifestUrl: String = "",
 ) {
+    val downloadable: Boolean
+        get() = manifestUrl.startsWith("https://")
+
     val pinned: Boolean
         get() = rootfsUrl.startsWith("https://") && SHA256.matches(rootfsSha256) && rootfsBytes > 0
 
@@ -63,7 +72,9 @@ data class DesktopPins(
                 dns = dns,
                 mirror = root.getString("mirror"),
                 securityMirror = root.getString("security_mirror"),
+                manifestUrl = root.optJSONObject("download")?.optString("manifest_url", "").orEmpty(),
             )
+            require(pins.manifestUrl.isEmpty() || pins.manifestUrl.startsWith("https://")) { "manifest_url must be https" }
             require(SUITE.matches(pins.suite)) { "suite is not a plain name" }
             require(pins.dns.isNotEmpty() && pins.dns.all { ADDRESS.matches(it) }) { "dns holds something that is not an address" }
             require(MIRROR.matches(pins.mirror) && MIRROR.matches(pins.securityMirror)) { "a mirror is not a plain URL" }

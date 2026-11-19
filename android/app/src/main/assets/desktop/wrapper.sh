@@ -12,6 +12,7 @@
 #   DESKTOP_DIR         filesDir/proot_layer (session files, never inside the tree)
 #   DESKTOP_BINDS       one host:guest bind per line (workspace, caches, project folders)
 #   DESKTOP_NO_SECCOMP  1 to run proot with PROOT_NO_SECCOMP=1 (the fallback)
+#   DESKTOP_DENSITY     the phone's screen density (for example 2.75), for the editor's scale
 # PROOT_LOADER, PROOT_TMP_DIR and LD_LIBRARY_PATH come from the app's own
 # environment (util/Environment.kt) and are passed through untouched.
 #
@@ -91,7 +92,7 @@ desktop_start() {
 }
 
 exec_session() {
-    desktop_proot_exec "READY_MARKER=$DESKTOP_READY_MARKER" -- \
+    desktop_proot_exec "READY_MARKER=$DESKTOP_READY_MARKER" "DENSITY=${DESKTOP_DENSITY:-1.00}" -- \
         /bin/bash -c '
 set -u
 umask 077
@@ -105,11 +106,24 @@ until xdpyinfo >/dev/null 2>&1; do
     sleep 0.5
 done
 touch "/tmp/$READY_MARKER"
+# Every window opens maximized and without a frame, so the one editor window fills the whole
+# Termux:X11 screen (which is the device screen) on any phone or tablet, with no empty bands.
+mkdir -p /root/.config/openbox
+cat > /root/.config/openbox/rc.xml <<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <applications>
+    <application class="*">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+    </application>
+  </applications>
+</openbox_config>
+XML
 openbox >/tmp/openbox.log 2>&1 &
 # The editor (work package WP4). Plain VSCodium, started the way a PC desktop would
 # start it, with the flags Electron needs inside proot and nothing else: no heap or
-# memory flags (Master Blueprint section 2 is not implemented). It is the one
-# window; closing it leaves the desktop, as on a PC.
+# memory flags (Master Blueprint section 2 is not implemented).
 mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions
 if [ ! -e /root/.config/VSCodium/User/settings.json ]; then
 cat > /root/.config/VSCodium/User/settings.json <<JSON
@@ -117,18 +131,61 @@ cat > /root/.config/VSCodium/User/settings.json <<JSON
   "editor.smoothScrolling": false,
   "workbench.list.smoothScrolling": false,
   "terminal.integrated.smoothScrolling": false,
-  "workbench.reduceMotion": "on"
+  "workbench.reduceMotion": "on",
+  "files.simpleDialog.enable": true,
+  "window.dialogStyle": "custom"
 }
 JSON
 fi
-if [ -x /usr/share/codium/codium ]; then
-    sleep 1
-    /usr/share/codium/codium --no-sandbox --disable-gpu --disable-dev-shm-usage \
-        --no-zygote --disable-setuid-sandbox --ozone-platform=x11 --password-store=basic \
+[ -x /usr/share/codium/codium ] || { echo "the editor is not installed" >&2; exit 13; }
+sleep 1
+# The editor draws at the phone density, as the device would on its own screen.
+DENSITY=${DENSITY:-1.00}
+export GIO_USE_VFS=local GTK_USE_PORTAL=0 ELECTRON_ENABLE_LOGGING=1 NO_AT_BRIDGE=1
+COMMON="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --ozone-platform=x11 --password-store=basic --force-device-scale-factor=$DENSITY"
+# Electron inside proot can lose its renderer ("crashed", code 5) depending on how the graphics
+# and process model are set up, which differs between devices. Three launch variants are tried
+# in turn when the editor reports a crashed renderer; the one that works is remembered.
+variant_flags() {
+    case "$1" in
+        1) echo "--disable-gpu" ;;
+        2) echo "--disable-gpu --disable-gpu-compositing --in-process-gpu --disable-features=VizDisplayCompositor" ;;
+        *) echo "--disable-gpu --disable-gpu-compositing --in-process-gpu --no-zygote --disable-features=VizDisplayCompositor" ;;
+    esac
+}
+VARIANT_FILE=/root/.config/vscodroid-variant
+v=1
+[ -r "$VARIANT_FILE" ] && v=$(cat "$VARIANT_FILE" 2>/dev/null)
+case "$v" in 1|2|3) ;; *) v=1 ;; esac
+tries=0
+while :; do
+    rm -rf /root/.config/VSCodium/logs
+    /usr/share/codium/codium $COMMON $(variant_flags "$v") \
         --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions \
         /root/workspace >/tmp/codium.log 2>&1 &
-fi
-wait
+    cpid=$!
+    echo "variant $v started" >> /tmp/codium.log
+    crashed=0
+    while kill -0 "$cpid" 2>/dev/null; do
+        sleep 2
+        if grep -rqsE "renderer process gone|render-process-gone|renderer process crashed" /root/.config/VSCodium/logs /tmp/codium.log 2>/dev/null; then
+            crashed=1
+            break
+        fi
+    done
+    [ "$crashed" = 1 ] || break
+    echo "variant $v crashed; trying the next" >> /tmp/codium.log.history
+    pkill -f /usr/share/codium 2>/dev/null
+    sleep 1
+    tries=$((tries + 1))
+    v=$(( v % 3 + 1 ))
+    echo "$v" > "$VARIANT_FILE"
+    [ "$tries" -ge 3 ] && break
+done
+# The person closed the editor, or it could not be kept running: the session ends here (the app
+# closes the picture and goes back), instead of leaving a black desktop with nothing on it.
+kill %1 2>/dev/null
+exit 0
 '
 }
 

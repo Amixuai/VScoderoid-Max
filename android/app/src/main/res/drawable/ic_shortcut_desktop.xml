@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon for the "Desktop Mode" launcher shortcut: a filled disc with a monitor, so it reads on any launcher background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#007ACC"
+        android:pathData="M0,24 A24,24 0 1,1 48,24 A24,24 0 1,1 0,24 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M12,14 L36,14 L36,29 L12,29 Z M20,35 L28,35 M24,29 L24,35"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.6" />
+</vector>

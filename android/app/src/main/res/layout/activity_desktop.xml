@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Desktop Mode start screen: only a status line while the desktop comes up (the picture
-     itself is the Termux:X11 screen). No toolbar, no buttons (the product rule is PC
-     parity, nothing that exists only here). keepScreenOn: a desktop does not sleep
-     while you are looking at it. -->
+<!-- Desktop Mode setup screen (portrait). Shown while the system is downloaded and unpacked the
+     first time and while the desktop starts; the picture itself is the Termux:X11 screen. It is
+     a setup screen and not part of the desktop, so a Cancel button here does not break PC
+     parity. Two real progress bars: the download (size, speed, time left) and, separately, the
+     unpacking, so neither ever looks frozen. keepScreenOn: setup takes minutes. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -17,7 +18,7 @@
         android:layout_gravity="center"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:padding="32dp">
+        android:padding="28dp">
 
         <ProgressBar
             android:id="@+id/desktop_progress"
@@ -34,7 +35,80 @@
             android:layout_marginTop="16dp"
             android:gravity="center"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" />
+            android:textSize="18sp" />
+
+        <!-- Download: bar, "x of y", speed, time left. -->
+        <LinearLayout
+            android:id="@+id/desktop_download_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/desktop_download_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="1000"
+                android:progressTint="#4FC3F7"
+                android:progressBackgroundTint="#333333" />
+
+            <TextView
+                android:id="@+id/desktop_download_sizes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/desktop_download_speed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:textColor="#B0B0B0"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Unpacking: its own bar. -->
+        <LinearLayout
+            android:id="@+id/desktop_unpack_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/desktop_unpack_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="1000"
+                android:progressTint="#81C784"
+                android:progressBackgroundTint="#333333" />
+
+            <TextView
+                android:id="@+id/desktop_unpack_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textColor="#B0B0B0"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/desktop_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/desktop_cancel"
+            android:visibility="gone" />
 
         <!-- Why a start failed, in the words of the logs. Shown only on failure, so a
              failure can be reported from a screenshot; there is no other way to read a

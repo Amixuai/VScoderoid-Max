@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Builds the Debian system that Desktop Mode ships INSIDE the APK
+# Builds the Debian system that Desktop Mode downloads on first use (it is NOT inside the APK;
+# CI publishes it as a release file, see .github/workflows/desktop-rootfs.yml)
 # (docs: "VSCodroid Desktop Mode: Engineering Brief" WP2; "Master Blueprint" sections 3 and 5).
 #
 #   sudo ./scripts/build-desktop-rootfs.sh            full build
 #   ./scripts/build-desktop-rootfs.sh --self-check    only the steps that need no root and no emulator
 #
-# Output, git-ignored build products the APK packages as assets:
-#   android/app/src/main/assets/desktop/rootfs.tar.xz        the system, xz level 6 (8 MiB window: a phone decodes it)
-#   android/app/src/main/assets/desktop/rootfs.meta.json     digest, sizes, package list, editor version
+# Output, in DESKTOP_OUT_DIR (default build/desktop-rootfs, git-ignored):
+#   rootfs.tar.xz         the system, xz level 6 (8 MiB window: a phone decodes it)
+#   rootfs.manifest.json  what the app reads first: url, sha256, bytes, unpacked size
+#   rootfs.meta.json      digest, sizes, package list, editor version (for people)
+# DESKTOP_ROOTFS_URL      the public address rootfs.tar.xz will be downloadable from; the manifest
+#                         names it. Default: the desktop-rootfs release of GITHUB_REPOSITORY.
 #
 # WHAT IT DOES
 #   1. Downloads the pinned arm64 Debian base image (pins.json) and checks its SHA-256.
@@ -34,6 +38,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 ASSETS_DIR="$ROOT_DIR/android/app/src/main/assets/desktop"
+OUT_DIR="${DESKTOP_OUT_DIR:-$ROOT_DIR/build/desktop-rootfs}"
 WORK_DIR="${DESKTOP_WORK_DIR:-$ROOT_DIR/toolchains/desktop-rootfs}"
 PINS="$ASSETS_DIR/pins.json"
 PACKAGES_FILE="$SCRIPT_DIR/desktop-packages.txt"
@@ -213,14 +218,14 @@ cleanup
 MOUNTS=()
 
 echo "Packing..."
-mkdir -p "$ASSETS_DIR"
-OUT="$ASSETS_DIR/rootfs.tar.xz"
+mkdir -p "$OUT_DIR"
+OUT="$OUT_DIR/rootfs.tar.xz"
 UNPACKED="$(du -sb "$TREE" | cut -f1)"
 tar --numeric-owner -C "$TREE" --exclude='./proc/*' --exclude='./sys/*' --exclude='./dev/*' -cf - . | xz -T0 -6 > "$OUT"
 BYTES="$(stat -c %s "$OUT")"
 SHA="$(sha_of "$OUT")"
 
-python3 -I - "$ASSETS_DIR/rootfs.meta.json" "$SHA" "$BYTES" "$UNPACKED" "$VER" "$SUITE" "$PACKAGES_FILE" <<'PY'
+python3 -I - "$OUT_DIR/rootfs.meta.json" "$SHA" "$BYTES" "$UNPACKED" "$VER" "$SUITE" "$PACKAGES_FILE" <<'PY'
 import json, sys
 out, sha, nbytes, unpacked, ver, suite, pkgs = sys.argv[1:8]
 names = [l.split("#")[0].strip() for l in open(pkgs)]
@@ -233,5 +238,12 @@ json.dump({
     "vscodium": ver,
     "packages": [n for n in names if n],
 }, open(out, "w"), indent=2)
+PY
+ROOTFS_URL="${DESKTOP_ROOTFS_URL:-https://github.com/${GITHUB_REPOSITORY:-Amixuai/Vscoderoid-Pro}/releases/download/desktop-rootfs/rootfs.tar.xz}"
+python3 -I - "$OUT_DIR/rootfs.manifest.json" "$ROOTFS_URL" "$SHA" "$BYTES" "$UNPACKED" <<'PY'
+import json, sys
+out, url, sha, nbytes, unpacked = sys.argv[1:6]
+json.dump({"schema": 1, "url": url, "sha256": sha, "bytes": int(nbytes),
+           "unpacked_bytes": int(unpacked), "strip_components": 0}, open(out, "w"), indent=2)
 PY
 echo "=== Done: rootfs.tar.xz $((BYTES / 1048576)) MiB, unpacks to $((UNPACKED / 1048576)) MiB, editor $VER ==="

@@ -254,6 +254,8 @@ to: patch 0005 disables the service worker upstream uses to scope each webview t
 
 Desktop Mode adds a second screen and a local display server, so it has its own controls:
 
+- The Debian system is downloaded on first use from this project's own release files over HTTPS only (an `http` address is refused). The manifest gives the SHA-256 of the archive; the archive is hashed while it is unpacked, and a tree whose digest differs is discarded together with the download. The manifest and archive come from the same release, so whoever can publish that release controls what runs inside the Debian system; that is the same trust the toolchain downloads already place in the release files.
+
 - **No network port.** The display is Termux:X11, built into the app. Its X server listens
   only on a unix socket inside the app's private folder (`debian_rootfs/tmp/.X11-unix/X0`),
   which another app cannot reach, so there is no loopback port and no password to protect.

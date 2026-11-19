@@ -54,6 +54,7 @@ yarn-error.log*
 /android/app/src/main/assets/usr/
 /android/app/src/main/assets/desktop/rootfs.tar.xz
 /android/app/src/main/assets/desktop/rootfs.meta.json
+/build/desktop-rootfs/
 # Translated interface bundles, built from microsoft/vscode-loc by
 # scripts/build-nls-bundles.py against the packaged server tree. Generated for
 # the same reason that tree is not committed: 16 MiB that a script reproduces

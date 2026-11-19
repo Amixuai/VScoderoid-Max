@@ -21,5 +21,8 @@ object DesktopViewer {
         "hideCutout" to true,
         "showAdditionalKbd" to false,
         "displayResolutionMode" to "native",
+        // Fill the whole screen: with the display at the phone's own size there is nothing to
+        // stretch, and any left-over band is filled instead of staying black.
+        "displayStretch" to true,
     )
 }

@@ -18,6 +18,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
+import com.vscodroid.desktop.DesktopActivity
+import com.vscodroid.desktop.DesktopManager
+import com.vscodroid.desktop.DesktopState
 import com.vscodroid.setup.FirstRunSetup
 import com.vscodroid.setup.ToolchainFailure
 import com.vscodroid.setup.ToolchainManager
@@ -1096,7 +1099,34 @@ class SplashActivity : AppCompatActivity() {
         // Those are floor numbers. The devices this project exists for have a
         // busier system server than an idle emulator does.
         publishToolchainShortcut()
+        startDesktopSetup()
         if (!gone) finish()
+    }
+
+    /**
+     * Desktop Mode lives inside this one app: a shortcut on its icon opens it, and its system
+     * (Debian, the editor, the toolchain) is fetched in the background the first time the app runs,
+     * so it is ready when someone opens it. Both are skipped on a phone below the RAM floor.
+     * Nothing here touches the editor that is starting. Failure is swallowed: a missing shortcut or
+     * a failed download is worth less than the editor.
+     */
+    private fun startDesktopSetup() {
+        try {
+            DesktopManager.attach(applicationContext)
+            if (DesktopManager.state == DesktopState.NotAvailable) return
+            ShortcutManagerCompat.pushDynamicShortcut(
+                this,
+                ShortcutInfoCompat.Builder(this, "desktop")
+                    .setShortLabel(getString(R.string.desktop_label))
+                    .setLongLabel(getString(R.string.desktop_label))
+                    .setIcon(IconCompat.createWithResource(this, R.drawable.ic_shortcut_desktop))
+                    .setIntent(Intent(this, DesktopActivity::class.java).setAction(Intent.ACTION_VIEW))
+                    .build(),
+            )
+            DesktopManager.prefetch(applicationContext)
+        } catch (e: Exception) {
+            Logger.w(tag, "Could not start the Desktop Mode setup: ${e.message}")
+        }
     }
 
     /**

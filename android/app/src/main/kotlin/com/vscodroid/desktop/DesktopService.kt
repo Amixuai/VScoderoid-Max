@@ -32,8 +32,12 @@ import com.vscodroid.util.Logger
 class DesktopService : Service() {
 
     private val listener = DesktopManager.Listener {
-        // A session that failed has nothing left for this service to hold.
-        if (DesktopManager.state == DesktopState.Failed) leave()
+        // A session that failed, a setup the person cancelled, or a session that ended by itself
+        // (the editor was closed) has nothing left for this service to hold.
+        val state = DesktopManager.state
+        if (state == DesktopState.Failed || state == DesktopState.NotInstalled ||
+            (state == DesktopState.Ready && DesktopManager.sessionEnded)
+        ) leave()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

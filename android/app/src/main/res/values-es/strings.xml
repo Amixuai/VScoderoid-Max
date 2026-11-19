@@ -609,7 +609,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">Iniciando el escritorio...</string>
-    <string name="desktop_preparing">Preparando Desktop Mode. Tarda unos minutos y solo ocurre una vez.</string>
+    <string name="desktop_downloading">Descargando Desktop Mode</string>
+    <string name="desktop_waiting_network">Esperando la red. La descarga continuará donde se detuvo.</string>
+    <string name="desktop_unpacking">Preparando el entorno...</string>
+    <string name="desktop_progress_of">%1$s de %2$s</string>
+    <string name="desktop_speed">%1$s/s</string>
+    <string name="desktop_eta_unknown">Tiempo restante: calculando...</string>
+    <string name="desktop_eta_seconds">Tiempo restante: %1$d s</string>
+    <string name="desktop_eta_minutes">Tiempo restante: %1$d min</string>
+    <string name="desktop_eta_hours">Tiempo restante: %1$d h %2$d min</string>
+    <string name="desktop_cancel">Cancelar</string>
     <string name="desktop_stopping">Deteniendo el escritorio...</string>
     <string name="desktop_not_available">Desktop Mode necesita un teléfono con al menos 6 GB de RAM, y este tiene menos.</string>
     <string name="desktop_need_files">Permite el acceso a todos los archivos para que tus proyectos puedan estar en la carpeta del espacio de trabajo y vuelve a abrir Desktop Mode.</string>

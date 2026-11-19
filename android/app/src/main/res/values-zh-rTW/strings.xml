@@ -601,7 +601,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">正在啟動桌面...</string>
-    <string name="desktop_preparing">正在準備 Desktop Mode。這需要幾分鐘，而且只會進行一次。</string>
+    <string name="desktop_downloading">正在下載 Desktop Mode</string>
+    <string name="desktop_waiting_network">正在等待網路。下載將從中斷處繼續。</string>
+    <string name="desktop_unpacking">正在設定環境...</string>
+    <string name="desktop_progress_of">%1$s / %2$s</string>
+    <string name="desktop_speed">%1$s/秒</string>
+    <string name="desktop_eta_unknown">剩餘時間:正在計算...</string>
+    <string name="desktop_eta_seconds">剩餘時間:%1$d 秒</string>
+    <string name="desktop_eta_minutes">剩餘時間:%1$d 分鐘</string>
+    <string name="desktop_eta_hours">剩餘時間:%1$d 小時 %2$d 分鐘</string>
+    <string name="desktop_cancel">取消</string>
     <string name="desktop_stopping">正在停止桌面...</string>
     <string name="desktop_not_available">Desktop Mode 需要至少 6 GB 記憶體的手機，而這支裝置的記憶體較少。</string>
     <string name="desktop_need_files">請允許存取所有檔案，讓您的專案可以存放在工作區資料夾中，然後再次開啟 Desktop Mode。</string>

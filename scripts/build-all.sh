@@ -76,13 +76,8 @@ step 10/11 "Building native addons, the compatibility shim and the exec intercep
 # The same, and it can sit here for the same reason: it writes only into jniLibs.
 "$SCRIPT_DIR/build-claude-shim.sh"
 
-# The Debian system Desktop Mode runs, packed into the APK so nothing of it is downloaded on the
-# phone. It runs arm64 programs under qemu-user as root, so it is for a Linux host that has both;
-# set SKIP_DESKTOP_ROOTFS=1 for an APK without it (Desktop Mode then falls back to the pinned
-# download in pins.json, which is for developers, not a release).
-if [ "${SKIP_DESKTOP_ROOTFS:-0}" != "1" ]; then
-    sudo -E "$SCRIPT_DIR/build-desktop-rootfs.sh"
-fi
+# Desktop Mode's Debian system is not part of the APK: .github/workflows/desktop-rootfs.yml builds and
+# publishes it, and the app downloads it the first time it runs.
 
 step 11/11 "Building the APK..."
 cd "$ROOT_DIR/android"

@@ -601,7 +601,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">데스크톱을 시작하는 중...</string>
-    <string name="desktop_preparing">Desktop Mode를 준비하는 중입니다. 몇 분 걸리며 처음 한 번만 진행됩니다.</string>
+    <string name="desktop_downloading">Desktop Mode 다운로드 중</string>
+    <string name="desktop_waiting_network">네트워크를 기다리는 중입니다. 다운로드는 중단된 지점부터 이어집니다.</string>
+    <string name="desktop_unpacking">환경을 설정하는 중...</string>
+    <string name="desktop_progress_of">%1$s / %2$s</string>
+    <string name="desktop_speed">%1$s/초</string>
+    <string name="desktop_eta_unknown">남은 시간: 계산 중...</string>
+    <string name="desktop_eta_seconds">남은 시간: %1$d초</string>
+    <string name="desktop_eta_minutes">남은 시간: %1$d분</string>
+    <string name="desktop_eta_hours">남은 시간: %1$d시간 %2$d분</string>
+    <string name="desktop_cancel">취소</string>
     <string name="desktop_stopping">데스크톱을 중지하는 중...</string>
     <string name="desktop_not_available">Desktop Mode에는 RAM 6 GB 이상의 휴대전화가 필요하며, 이 기기는 그보다 적습니다.</string>
     <string name="desktop_need_files">프로젝트를 작업 공간 폴더에 둘 수 있도록 모든 파일에 대한 액세스를 허용한 다음 Desktop Mode를 다시 여세요.</string>

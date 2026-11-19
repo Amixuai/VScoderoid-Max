@@ -600,7 +600,7 @@ colour probe's own WebView records nothing.
 
 ## Desktop Mode (experimental)
 
-A second launcher entry opens `DesktopActivity`, a landscape start screen that hands over
+The app has one launcher icon; Desktop Mode is a dynamic shortcut on it (`SplashActivity.startDesktopSetup()`), which also starts the background download of the system (`DesktopManager.prefetch`). The shortcut opens `DesktopActivity`, a portrait setup screen (download bar with size, speed and time left; a separate unpack bar; Cancel) that hands over
 to the Termux:X11 screen (library module `lorie`, built into the app from the commit in
 `TERMUX_X11_COMMIT`, fetched by `scripts/fetch-termux-x11.sh` and adapted by
 `scripts/patch-termux-x11.py`). Its X server runs as an `app_process` of the app with its
@@ -611,7 +611,7 @@ socket in the Debian tree's `/tmp`, so the guest uses `DISPLAY=:0`. No network p
   service both talk to it.
 - `DesktopService` is a foreground service of type specialUse that keeps the process
   alive while the desktop runs; its notification carries Android's Stop action.
-- `RootfsProvisioner` unpacks `assets/desktop/rootfs.tar.xz` into `debian_rootfs`;
+- `RootfsProvisioner` reads the manifest named in `pins.json` (`download.manifest_url`, published by `.github/workflows/desktop-rootfs.yml`), downloads the archive in resumable Range chunks with retry, unpacks it into `debian_rootfs` while checking its SHA-256, and deletes the archive when the unpack succeeded;
   `DesktopLauncher` runs `assets/desktop/wrapper.sh`, which starts openbox and VSCodium
   inside one proot, after `DesktopLauncher` has started the X server.
 - `DesktopStorage` keeps heavy project folders in private storage and binds them into the

@@ -791,26 +791,8 @@ jobs:
             exit 1
           fi
 
-      # The Debian system Desktop Mode runs, with the screen stack, the editor and the
-      # compilers already installed, packed into the APK so that nothing of it is
-      # downloaded on the phone (Master Blueprint, section 5). The arm64 programs are
-      # run on this x86-64 host by qemu-user through binfmt. Its result is cached on
-      # everything that shapes it; the editor release is the VSCODIUM_VERSION file.
-      - name: Install the emulator the Desktop Mode system is built under
-        run: sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
-
-      - name: Restore the Desktop Mode system
-        id: cache-desktop
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            android/app/src/main/assets/desktop/rootfs.tar.xz
-            android/app/src/main/assets/desktop/rootfs.meta.json
-          key: desktop-rootfs-${{ hashFiles('android/app/src/main/assets/desktop/pins.json', 'scripts/build-desktop-rootfs.sh', 'scripts/desktop-packages.txt', 'VSCODIUM_VERSION') }}
-
-      - name: Build the Desktop Mode system
-        if: steps.cache-desktop.outputs.cache-hit != 'true'
-        run: sudo -E bash scripts/build-desktop-rootfs.sh
+      # Desktop Mode's Debian system is NOT part of the APK: it is built and published by
+      # .github/workflows/desktop-rootfs.yml, and the app downloads it the first time it runs.
 
       - name: Build signed APK
         working-directory: android

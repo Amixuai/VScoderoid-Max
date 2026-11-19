@@ -49,6 +49,29 @@ object DesktopManager {
     @Volatile var progress: RootfsProvisioner.Progress? = null
         private set
 
+    /** Speed of the current download or unpack, in bytes per second; 0 when unknown or stalled. */
+    @Volatile var bytesPerSecond: Long = 0L
+        private set
+
+    @Volatile private var cancelRequested = false
+
+    /** True after a session ended on its own, until the next start. */
+    @Volatile var sessionEnded = false
+        private set
+    private val meter = TransferMeter()
+    private var meterPhase: RootfsProvisioner.Phase? = null
+
+    /** True while the system is being fetched or unpacked, from any caller. */
+    val isPreparing: Boolean
+        get() = state == DesktopState.Downloading || state == DesktopState.Extracting || state == DesktopState.Provisioning
+
+    /** Seconds left for the current phase, or -1 when it cannot be said yet. */
+    fun etaSeconds(): Long {
+        val p = progress ?: return -1L
+        if (p.total <= 0L) return -1L
+        return TransferMeter.etaSeconds(p.total - p.done, bytesPerSecond)
+    }
+
     /** Idempotent; the first call builds the machine and settles a state left by a dead process. */
     @Synchronized
     fun attach(context: Context) {
@@ -81,6 +104,9 @@ object DesktopManager {
     fun start(context: Context) {
         val app = context.applicationContext
         attach(app)
+        // The system is already on its way (background download): the screen starts the desktop when
+        // it reaches Ready. Queueing a start here would restart a download the person just cancelled.
+        if (isPreparing) return
         worker.execute {
             try {
                 runStart(app)
@@ -89,6 +115,34 @@ object DesktopManager {
                 fail(Failure(FailureKind.Other, t.javaClass.simpleName))
             }
         }
+    }
+
+    /**
+     * Starts fetching and unpacking the system without launching the desktop, so it is ready by
+     * the time anyone opens Desktop Mode. Does nothing when it is already there, when the device
+     * is below the RAM floor, or when work is already running.
+     */
+    fun prefetch(context: Context) {
+        val app = context.applicationContext
+        attach(app)
+        if (state != DesktopState.NotInstalled && state != DesktopState.Failed) return
+        worker.execute {
+            try {
+                lastFailure = null
+                provisionIfNeeded(app)
+            } catch (t: Throwable) {
+                Logger.e(TAG, "Prefetch failed unexpectedly", t)
+                fail(Failure(FailureKind.Other, t.javaClass.simpleName))
+            }
+        }
+    }
+
+    /**
+     * Cancels a download or unpack in progress. What was downloaded stays on the phone and the
+     * next start continues from there. Returns at once; the state follows.
+     */
+    fun cancel() {
+        if (isPreparing) cancelRequested = true
     }
 
     /** Stops the desktop. [onDone] runs on the main thread when nothing of it is left. */
@@ -122,20 +176,11 @@ object DesktopManager {
             else -> Unit
         }
         lastFailure = null
+        sessionEnded = false
+        if (!provisionIfNeeded(app)) return
         if (!PublicWorkspace.hasAllFilesAccess()) {
             fail(Failure(FailureKind.NeedsAllFilesAccess, ""))
             return
-        }
-        val provisioner = DesktopRuntime.provisioner(app, progress = ::onProgress)
-        if (!provisioner.isReady()) {
-            move(if (DesktopRuntime.bundled(app) != null) DesktopState.Extracting else DesktopState.Downloading)
-            when (val r = provisioner.provision()) {
-                RootfsProvisioner.Result.Ready -> Unit
-                is RootfsProvisioner.Result.InsufficientStorage ->
-                    return fail(Failure(FailureKind.NotEnoughStorage, "need ${r.neededBytes}, have ${r.availableBytes}"))
-                else -> return fail(Failure(FailureKind.Other, r.toString().take(300)))
-            }
-            move(DesktopState.Provisioning)
         }
         move(DesktopState.Ready)
         move(DesktopState.Starting)
@@ -152,7 +197,49 @@ object DesktopManager {
         }
     }
 
-    /** Marks the session failed if its process ends while the screen believes it is running. */
+    /** Unpacks the system when it is not there yet. False when it did not end ready (the state says why). */
+    private fun provisionIfNeeded(app: Context): Boolean {
+        val m = machine ?: return false
+        if (m.state == DesktopState.NotAvailable) return false
+        cancelRequested = false
+        val provisioner = DesktopRuntime.provisioner(app, progress = ::onProgress, isCancelled = { cancelRequested })
+        if (provisioner.isReady()) {
+            if (m.state == DesktopState.NotInstalled || m.state == DesktopState.Failed) move(DesktopState.Ready)
+            return true
+        }
+        synchronized(this) {
+            if (isPreparing) return false
+            move(DesktopState.Downloading)
+        }
+        meter.reset()
+        meterPhase = null
+        bytesPerSecond = 0L
+        val result = provisioner.provision()
+        progress = null
+        bytesPerSecond = 0L
+        when (result) {
+            RootfsProvisioner.Result.Ready -> {
+                move(DesktopState.Provisioning)
+                move(DesktopState.Ready)
+                return true
+            }
+            RootfsProvisioner.Result.Cancelled -> {
+                move(DesktopState.NotInstalled)
+                notifyListeners()
+            }
+            is RootfsProvisioner.Result.InsufficientStorage ->
+                fail(Failure(FailureKind.NotEnoughStorage, "need ${result.neededBytes}, have ${result.availableBytes}"))
+            else -> fail(Failure(FailureKind.Other, result.toString().take(300)))
+        }
+        return false
+    }
+
+    /**
+     * Ends the session cleanly when its process ends while the screen believes it is running:
+     * the editor was closed (as on a PC, nothing is left on the desktop), or the guest died.
+     * Everything of the session is stopped, the state goes back to Ready and the screen closes the
+     * picture, so the person never stays in front of a dead black display and can open it again.
+     */
     private fun watch(process: Process?) {
         if (process == null) return
         Thread({
@@ -161,15 +248,32 @@ object DesktopManager {
             if (machine?.state == DesktopState.Running &&
                 (current?.process() === process || current?.xServerProcess() === process)
             ) {
-                fail(Failure(FailureKind.Other, "the session ended"))
+                Logger.w(TAG, "The desktop session ended; stopping what is left of it")
+                sessionEnded = true
+                move(DesktopState.Stopping)
+                runCatching { current?.stop() }
+                move(DesktopState.Ready)
+                notifyListeners()
             }
         }, "desktop-watch").apply { isDaemon = true }.start()
     }
 
     private fun onProgress(p: RootfsProvisioner.Progress) {
         progress = p
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (p.phase != meterPhase) {
+            // Waiting keeps the download's meter: the speed then falls to zero by itself.
+            if (p.phase != RootfsProvisioner.Phase.Waiting) {
+                meter.reset()
+                meterPhase = p.phase
+            }
+        }
+        if (p.phase == RootfsProvisioner.Phase.Download || p.phase == RootfsProvisioner.Phase.Extract) {
+            meter.add(now, p.done)
+        }
+        bytesPerSecond = if (p.phase == RootfsProvisioner.Phase.Waiting) 0L else meter.bytesPerSecond(now)
         when (p.phase) {
-            RootfsProvisioner.Phase.Download -> move(DesktopState.Downloading)
+            RootfsProvisioner.Phase.Download, RootfsProvisioner.Phase.Waiting -> move(DesktopState.Downloading)
             RootfsProvisioner.Phase.Extract -> move(DesktopState.Extracting)
             RootfsProvisioner.Phase.Configure -> move(DesktopState.Provisioning)
             else -> Unit

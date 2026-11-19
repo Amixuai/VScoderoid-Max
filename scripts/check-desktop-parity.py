@@ -17,7 +17,7 @@ this script refuses them:
   * the Debian system gets no program of its own: nothing is written to
     /usr/local/bin or /usr/bin by the app's code or assets, and profile.d holds
     exactly the two files the brief names (aliases and paths);
-  * the manifest gives Desktop Mode one launcher entry and no other way in.
+  * the app has ONE launcher icon; Desktop Mode has none of its own (it is a shortcut on the app's icon).
 
 A pass means none of those holds, not that the desktop behaves like a PC; the device
 checklist (docs/DESKTOP_DEVICE_CHECKLIST.md, parity audit) covers the rest. Every run
@@ -130,17 +130,29 @@ def main() -> int:
             failures.append(f"{path.relative_to(ROOT)}: profile.d file {extra!r} (only the aliases and paths files are allowed)")
     ok.append("no memory flags, no own programs, profile.d limited to aliases and paths")
 
-    for widget in widgets(LAYOUT.read_text(encoding="utf-8")):
+    # The one control allowed is the Cancel button of the SETUP screen (download and unpack
+    # progress), which is not part of the desktop: the desktop picture is Termux:X11 and has none.
+    layout_text = LAYOUT.read_text(encoding="utf-8")
+    found = widgets(layout_text)
+    if "@+id/desktop_cancel" in layout_text and found.count("<Button") == 1:
+        found.remove("<Button")
+    for widget in found:
         failures.append(f"{LAYOUT.relative_to(ROOT)}: {widget!r} (the screen has no controls of its own)")
     for path in (DESKTOP_KT / "DesktopActivity.kt", DESKTOP_KT / "DesktopService.kt"):
-        for hit in app_only_code(kt[path]):
+        hits = app_only_code(kt[path])
+        if path.name == "DesktopActivity.kt" and hits.count("setOnClickListener") == 1:
+            hits.remove("setOnClickListener")  # the setup screen's Cancel
+        for hit in hits:
             failures.append(f"{path.relative_to(ROOT)}: {hit!r} (nothing app-only may enter the desktop)")
-    ok.append("the start screen is a status line, the picture is Termux:X11")
+    ok.append("the setup screen has progress and one Cancel, the picture is Termux:X11")
 
     launchers = [n for n in launcher_entries(MANIFEST.read_text(encoding="utf-8")) if "desktop" in n.lower()]
-    if launchers != [".desktop.DesktopActivity"]:
-        failures.append(f"manifest: Desktop Mode launcher entries are {launchers}, expected exactly one")
-    ok.append("one launcher entry")
+    if launchers:
+        failures.append(f"manifest: Desktop Mode has launcher entries {launchers}; the app has one icon")
+    all_launchers = launcher_entries(MANIFEST.read_text(encoding="utf-8"))
+    if len(all_launchers) != 1:
+        failures.append(f"manifest: the app has launcher entries {all_launchers}, expected exactly one icon")
+    ok.append("one launcher entry in the whole app")
 
     for line in ok:
         print(f"  ok     {line}")

@@ -195,27 +195,22 @@
         </activity>
 
         <!-- Desktop Mode: the real desktop editor in a Debian system inside the app,
-             shown through Termux:X11. It is its own launcher entry, and the existing editor
-             above stays the default. Landscape only, so rotating never resizes the
-             display. adjustPan keeps the picture at
+             shown through Termux:X11. It has no launcher entry of its own (the app has one icon;
+             Desktop Mode is a shortcut on it, see SplashActivity). This setup screen is portrait;
+             the Termux:X11 picture below is landscape. adjustPan keeps the picture at
              one size while the soft keyboard is up. The fixed colours in
              activity_desktop.xml are why uiMode is safe to handle here, for the same
              reason given on SplashActivity. -->
         <activity
             android:name=".desktop.DesktopActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/desktop_label"
             android:launchMode="singleTop"
-            android:screenOrientation="sensorLandscape"
+            android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density"
             android:windowSoftInputMode="adjustPan"
             android:theme="@style/Theme.VSCodroid"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
         <!-- Termux:X11 screen (library module lorie), the picture of Desktop Mode. DesktopActivity
              starts it once the X server is up. It is not a launcher entry, has no

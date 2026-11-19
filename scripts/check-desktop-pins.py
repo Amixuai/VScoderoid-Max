@@ -75,6 +75,10 @@ def main() -> int:
     security = need(data, "security_mirror", str, "")
     dns = need(data, "dns", list, "")
     rootfs = need(data, "rootfs", dict, "")
+    download = data.get("download", {})
+    manifest_url = download.get("manifest_url", "") if isinstance(download, dict) else None
+    if not isinstance(manifest_url, str) or (manifest_url and not manifest_url.startswith("https://")):
+        failures.append("download.manifest_url must be an https URL")
 
     if suite is not None and not SUITE.match(suite):
         failures.append("suite is not a plain lower-case name")

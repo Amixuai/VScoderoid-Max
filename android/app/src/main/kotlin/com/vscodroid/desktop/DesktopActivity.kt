@@ -5,7 +5,10 @@ import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
+import android.text.format.Formatter
 import android.view.View
+import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -27,7 +30,9 @@ import com.vscodroid.storage.PublicWorkspace
  * touch handling plus the keyboard. Leaving with Back keeps the desktop running (this
  * screen then closes itself); Android's own notification Stop action ends it.
  *
- * The screen is locked to landscape.
+ * This setup screen is portrait. It shows the real progress of the first-time download (size,
+ * speed, time left) and, apart, of the unpacking, with a Cancel button. The Termux:X11 picture
+ * follows the device's own screen size and density.
  *
  * STATUS: UNTESTED. Written without an Android SDK; not compiled, not run.
  */
@@ -45,6 +50,10 @@ class DesktopActivity : AppCompatActivity() {
         setContentView(R.layout.activity_desktop)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         status = findViewById(R.id.desktop_status)
+        findViewById<Button>(R.id.desktop_cancel).setOnClickListener {
+            DesktopManager.cancel()
+            finish()
+        }
         DesktopManager.attach(this)
         DesktopManager.addListener(listener)
         render()
@@ -61,7 +70,13 @@ class DesktopActivity : AppCompatActivity() {
         }
         // Back from the Termux:X11 screen: the desktop keeps running, and so leaving it
         // leaves this screen too (opening Desktop Mode again brings the picture back).
+        // Also when the session ended while this screen was behind the picture: nothing is left to show.
         if (x11Opened) finish()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     override fun onDestroy() {
@@ -92,10 +107,22 @@ class DesktopActivity : AppCompatActivity() {
 
     private fun render() {
         val state = DesktopManager.state
+        // The session ended while the picture was up (editor closed, guest gone): bring this screen
+        // back on top of the picture, which removes it, so no dead black display stays on screen.
+        if (x11Opened && state != DesktopState.Running) {
+            startActivity(
+                Intent(this, DesktopActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
+            return
+        }
+        // Prepared in the background (or just now): start the desktop once the system is there.
+        if (state == DesktopState.Ready && !x11Opened) requestStart()
         val message = when (state) {
             DesktopState.NotAvailable -> R.string.desktop_not_available
             DesktopState.NotInstalled, DesktopState.Ready, DesktopState.Starting -> R.string.desktop_starting
-            DesktopState.Downloading, DesktopState.Extracting, DesktopState.Provisioning -> R.string.desktop_preparing
+            DesktopState.Downloading -> R.string.desktop_downloading
+            DesktopState.Extracting, DesktopState.Provisioning -> R.string.desktop_unpacking
             DesktopState.Stopping -> R.string.desktop_stopping
             DesktopState.Failed -> when (DesktopManager.lastFailure?.kind) {
                 DesktopManager.FailureKind.NeedsAllFilesAccess -> R.string.desktop_need_files
@@ -107,8 +134,13 @@ class DesktopActivity : AppCompatActivity() {
         if (message != null) {
             status.setText(message)
             status.visibility = View.VISIBLE
+            renderTransfer(state)
             findViewById<View>(R.id.desktop_progress).visibility =
-                if (state == DesktopState.Failed || state == DesktopState.NotAvailable) View.GONE else View.VISIBLE
+                if (state == DesktopState.Failed || state == DesktopState.NotAvailable ||
+                    DesktopManager.isPreparing
+                ) View.GONE else View.VISIBLE
+            findViewById<View>(R.id.desktop_cancel).visibility =
+                if (DesktopManager.isPreparing) View.VISIBLE else View.GONE
             val detail = findViewById<TextView>(R.id.desktop_detail)
             val reason = DesktopManager.lastFailure?.detail.orEmpty()
             val showDetail = state == DesktopState.Failed && reason.isNotBlank() &&
@@ -125,7 +157,72 @@ class DesktopActivity : AppCompatActivity() {
         status.visibility = View.GONE
         findViewById<View>(R.id.desktop_detail).visibility = View.GONE
         findViewById<View>(R.id.desktop_progress).visibility = View.GONE
+        findViewById<View>(R.id.desktop_download_group).visibility = View.GONE
+        findViewById<View>(R.id.desktop_unpack_group).visibility = View.GONE
+        findViewById<View>(R.id.desktop_cancel).visibility = View.GONE
         if (!x11Opened) openDisplay()
+    }
+
+    /** Fills the download and unpack bars from the manager's counts. */
+    private fun renderTransfer(state: DesktopState) {
+        val download = findViewById<View>(R.id.desktop_download_group)
+        val unpack = findViewById<View>(R.id.desktop_unpack_group)
+        val p = DesktopManager.progress
+        val downloading = state == DesktopState.Downloading
+        val unpacking = state == DesktopState.Extracting || state == DesktopState.Provisioning
+        download.visibility = if (downloading || unpacking) View.VISIBLE else View.GONE
+        unpack.visibility = if (unpacking) View.VISIBLE else View.GONE
+        val bar = findViewById<ProgressBar>(R.id.desktop_download_bar)
+        val sizes = findViewById<TextView>(R.id.desktop_download_sizes)
+        val speed = findViewById<TextView>(R.id.desktop_download_speed)
+        if (downloading && p != null && p.total > 0) {
+            bar.progress = permille(p.done, p.total)
+            sizes.text = getString(
+                R.string.desktop_progress_of,
+                Formatter.formatFileSize(this, p.done), Formatter.formatFileSize(this, p.total),
+            )
+            speed.text = if (p.phase == com.vscodroid.desktop.RootfsProvisioner.Phase.Waiting) {
+                getString(R.string.desktop_waiting_network)
+            } else {
+                getString(
+                    R.string.desktop_speed, Formatter.formatFileSize(this, DesktopManager.bytesPerSecond),
+                ) + "   " + etaText(DesktopManager.etaSeconds())
+            }
+        } else if (downloading) {
+            bar.progress = 0
+            sizes.text = ""
+            speed.text = if (p?.phase == com.vscodroid.desktop.RootfsProvisioner.Phase.Waiting) {
+                getString(R.string.desktop_waiting_network)
+            } else ""
+        } else if (unpacking) {
+            bar.progress = bar.max
+            sizes.text = ""
+            speed.text = ""
+        }
+        if (unpacking) {
+            val ubar = findViewById<ProgressBar>(R.id.desktop_unpack_bar)
+            val utext = findViewById<TextView>(R.id.desktop_unpack_text)
+            if (p != null && p.total > 0 && state == DesktopState.Extracting) {
+                ubar.progress = permille(p.done, p.total)
+                utext.text = getString(R.string.desktop_progress_of, percent(p.done, p.total), "100%") +
+                    "   " + etaText(DesktopManager.etaSeconds())
+            } else {
+                ubar.progress = ubar.max
+                utext.text = ""
+            }
+        }
+    }
+
+    private fun permille(done: Long, total: Long): Int =
+        if (total <= 0) 0 else (done.coerceIn(0, total) * 1000 / total).toInt()
+
+    private fun percent(done: Long, total: Long): String = "${permille(done, total) / 10}%"
+
+    private fun etaText(seconds: Long): String = when {
+        seconds < 0 -> getString(R.string.desktop_eta_unknown)
+        seconds < 90 -> getString(R.string.desktop_eta_seconds, seconds.toInt())
+        seconds < 3600 -> getString(R.string.desktop_eta_minutes, ((seconds + 30) / 60).toInt())
+        else -> getString(R.string.desktop_eta_hours, (seconds / 3600).toInt(), ((seconds % 3600) / 60).toInt())
     }
 
     /** Opens the Termux:X11 screen once per visit, after setting its preferences the first time. */
@@ -177,7 +274,7 @@ class DesktopActivity : AppCompatActivity() {
 
     private companion object {
         const val KEY_PHANTOM_HELP_SHOWN = "phantom_help_shown"
-        const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set"
+        const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set_v2"
         const val DETAIL_CHARS = 1200
         const val MEMORY_WARNING_GAP_MS = 5 * 60 * 1000L
     }

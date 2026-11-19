@@ -50,6 +50,8 @@ class DesktopLauncher(
     /** This app's package name (it differs between debug and release builds). */
     private val hostPackage: String,
     private val x11LogFile: File,
+    /** The device's screen density (1.0 = 160 dpi), so the editor is as large as on the phone's own apps. */
+    private val density: Float = 1f,
     private val readyTimeoutSeconds: Long = READY_TIMEOUT_SECONDS,
 ) {
     sealed class StartResult {
@@ -218,6 +220,7 @@ class DesktopLauncher(
         env["DESKTOP_DIR"] = layerDir.absolutePath
         env["DESKTOP_BINDS"] = plan.binds.joinToString("\n") { it.spec() }
         env["DESKTOP_NO_SECCOMP"] = if (noSeccomp) "1" else "0"
+        env["DESKTOP_DENSITY"] = java.lang.String.format(java.util.Locale.US, "%.2f", density.coerceIn(1f, 4f))
         return env
     }
 
@@ -344,6 +347,7 @@ class DesktopLauncher(
                 nativeLibDir = context.applicationInfo.nativeLibraryDir,
                 hostPackage = context.packageName,
                 x11LogFile = File(filesDir, "logs/x11.log"),
+                density = context.resources.displayMetrics.density,
             )
         }
     }

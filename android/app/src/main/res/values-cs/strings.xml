@@ -613,7 +613,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">Spouštím plochu...</string>
-    <string name="desktop_preparing">Připravuji Desktop Mode. Trvá to několik minut a děje se to jen jednou.</string>
+    <string name="desktop_downloading">Stahování Desktop Mode</string>
+    <string name="desktop_waiting_network">Čekání na síť. Stahování bude pokračovat od místa, kde skončilo.</string>
+    <string name="desktop_unpacking">Připravuje se prostředí...</string>
+    <string name="desktop_progress_of">%1$s z %2$s</string>
+    <string name="desktop_speed">%1$s/s</string>
+    <string name="desktop_eta_unknown">Zbývá: výpočet...</string>
+    <string name="desktop_eta_seconds">Zbývá: %1$d s</string>
+    <string name="desktop_eta_minutes">Zbývá: %1$d min</string>
+    <string name="desktop_eta_hours">Zbývá: %1$d h %2$d min</string>
+    <string name="desktop_cancel">Zrušit</string>
     <string name="desktop_stopping">Zastavuji plochu...</string>
     <string name="desktop_not_available">Desktop Mode vyžaduje telefon s alespoň 6 GB RAM a tento jich má méně.</string>
     <string name="desktop_need_files">Povolte přístup ke všem souborům, aby vaše projekty mohly být ve složce pracovního prostoru, a pak znovu otevřete Desktop Mode.</string>

@@ -133,7 +133,7 @@ Node.js includes V8 (BSD-3-Clause), libuv (MIT), OpenSSL (Apache-2.0), ICU (Unic
 - **Project**: https://tukaani.org/xz/java.html
 - **Version**: 1.10, declared as `xz` in `android/gradle/libs.versions.toml`
 - **License**: Public domain (the project's own statement; Maven artifact `org.tukaani:xz`)
-- **Used for**: unpacking the `.tar.xz` Debian root file system that Desktop Mode ships inside the APK. It is a Java library compiled into the app, not a native binary.
+- **Used for**: unpacking the `.tar.xz` Debian root file system that Desktop Mode downloads on first use. It is a Java library compiled into the app, not a native binary.
 
 ### tmux
 
@@ -678,7 +678,7 @@ VSCodroid bundles binaries licensed under the GNU General Public License (GPL). 
 - **GNU Make** (GPL-3.0): Source available at https://github.com/termux/termux-packages (package: `make`)
 - **PRoot** (GPL-2.0): Source available at https://github.com/termux/termux-packages (package: `proot`); it starts the Debian system of Desktop Mode, and its loader is shipped as `libproot-loader.so`
 - **talloc** (LGPL-3.0): Source available at https://github.com/termux/termux-packages (package: `libtalloc`), linked by PRoot
-- **Debian system of Desktop Mode** (GPL, LGPL and others, per package): `assets/desktop/rootfs.tar.xz` is a Debian GNU/Linux 13 (trixie) arm64 tree. Its packages are the ones in `scripts/desktop-packages.txt` plus their dependencies and the base image's, each unmodified from the Debian archive. Every package's licence text is in `/usr/share/doc/<package>/copyright` inside that tree, and the corresponding source of every package is at https://sources.debian.org and https://deb.debian.org/debian (`apt-get source <package>`). `rootfs.meta.json`, shipped beside it, lists what was installed
+- **Debian system of Desktop Mode** (GPL, LGPL and others, per package): The release file `rootfs.tar.xz`, which the app downloads, is a Debian GNU/Linux 13 (trixie) arm64 tree. Its packages are the ones in `scripts/desktop-packages.txt` plus their dependencies and the base image's, each unmodified from the Debian archive. Every package's licence text is in `/usr/share/doc/<package>/copyright` inside that tree, and the corresponding source of every package is at https://sources.debian.org and https://deb.debian.org/debian (`apt-get source <package>`). `rootfs.meta.json`, shipped beside it, lists what was installed
 - **Termux:X11** (GPL-3.0): the X server and screen of Desktop Mode, module `lorie`, built into the app from https://github.com/termux/termux-x11 at the commit in `TERMUX_X11_COMMIT` with the four small edits in `scripts/patch-termux-x11.py`; the complete corresponding source of the app is this repository. Its submodules (X.Org server, libxkbcommon, pixman, libepoxy, xkbcomp and others) keep their own licences in that source
 - **VSCodium** (MIT): the Electron editor of Desktop Mode, installed in that tree from the project's own arm64 `.deb` after checking the SHA-256 the project publishes; source at https://github.com/VSCodium/vscodium
 - **readline** (GPL-3.0): Source available at https://github.com/termux/termux-packages (package: `readline`)

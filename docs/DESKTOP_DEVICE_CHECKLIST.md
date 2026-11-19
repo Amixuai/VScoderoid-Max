@@ -10,10 +10,10 @@ Session: device, Android version, RAM, build (debug or release), date.
 
 | ID | Check | Pass when | Result |
 | -- | ----- | --------- | ------ |
-| DT-1 | Launcher | A second launcher entry named Desktop Mode is present; the normal editor icon still opens the normal editor | |
+| DT-1 | One icon | The app has a single launcher icon; long-pressing it offers Desktop Mode; the icon still opens the normal editor | |
 | DT-2 | RAM gate | On a phone below about 5.5 GiB total RAM the screen says Desktop Mode needs 6 GB and starts nothing | |
-| DT-3 | First start, no network | In airplane mode, first open unpacks the system and reaches the desktop; the progress text shows while it works | |
-| DT-4 | Interrupted unpack | Force-stop the app during the unpack and reopen: it resumes and finishes | |
+| DT-3 | First download | On first open the system downloads by itself; the portrait screen shows size, speed and time left, then a separate unpack bar; the archive is gone from storage afterwards | |
+| DT-4 | Interrupted download | Switch the network off mid-download for a while, or force-stop the app, then reopen: it says it is waiting, then continues from the same byte; Cancel keeps the partial file and a later start continues | |
 | DT-5 | All files access | With the permission off, the screen opens the system screen; after allowing it and coming back the desktop starts | |
 | DT-6 | Desktop up | The desktop and VSCodium appear within 60 seconds after the first setup, on the workspace folder | |
 | DT-7 | Save to shared storage | A file saved in the editor is visible in Android's file manager under the hidden workspace folder | |
@@ -25,7 +25,7 @@ Session: device, Android version, RAM, build (debug or release), date.
 | DT-13 | Touch | Tap is a left click, long press is a right click, two fingers scroll, pinch zooms the picture | |
 | DT-14 | Keyboards | The on-screen keyboard (side tab) types into the editor and the terminal without doubled text; a hardware keyboard works with Ctrl, Alt, F-keys and Ctrl+Shift+P | |
 | DT-15 | Clipboard | Text copied in the editor can be pasted in Android and the other way round, through the side tab | |
-| DT-16 | Rotation | Turning the phone between the two landscape orientations keeps the session | |
+| DT-16 | Full screen | The picture covers the whole screen with no black bands, on a phone and on a tablet; turning between the two landscape orientations keeps the session | |
 | DT-17 | Back and Stop | Back leaves the screen and the desktop keeps running; reopening shows it again; the notification Stop ends it and removes the notification | |
 | DT-18 | Ten cycles | Ten start and stop cycles leave no stray proot, openbox or vscodroid-x11 process | |
 | DT-19 | Background | Five minutes in the background, then back: the session is intact. Force-stop, then open: it starts cleanly | |
@@ -45,7 +45,7 @@ These are the places the code is most likely to need a fix, because nothing has 
 
 - The on-screen keyboard: the app relies on Termux:X11's own handling (DT-14).
 - Clipboard is whatever Termux:X11 shares (DT-15).
-- Landscape only; no portrait screen size and no UI scale setting.
+- The setup screen is portrait, the desktop picture landscape; no UI scale setting.
 - No extra-key row of the app's own: the extra-keys bar of Termux:X11 is off by default (PC parity), so Esc, Ctrl, Alt and Tab need a hardware keyboard
   unless it is turned on in Termux:X11's settings.
 - First thing to check: the X server starts from the app (app_process, libXlorie.so from the native library folder) and

@@ -14,6 +14,7 @@ class DesktopViewerTest {
         assertEquals(true, p["fullscreen"])
         assertEquals(false, p["showAdditionalKbd"], "no extra-keys bar: PC parity")
         assertEquals("native", p["displayResolutionMode"])
+        assertEquals(true, p["displayStretch"], "no black bands around the picture")
     }
 
     @Test

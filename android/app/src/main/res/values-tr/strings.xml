@@ -605,7 +605,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">Masaüstü başlatılıyor...</string>
-    <string name="desktop_preparing">Desktop Mode hazırlanıyor. Bu birkaç dakika sürer ve yalnızca bir kez olur.</string>
+    <string name="desktop_downloading">Desktop Mode indiriliyor</string>
+    <string name="desktop_waiting_network">Ağ bekleniyor. İndirme kaldığı yerden devam edecek.</string>
+    <string name="desktop_unpacking">Ortam hazırlanıyor...</string>
+    <string name="desktop_progress_of">%1$s / %2$s</string>
+    <string name="desktop_speed">%1$s/sn</string>
+    <string name="desktop_eta_unknown">Kalan süre: hesaplanıyor...</string>
+    <string name="desktop_eta_seconds">Kalan süre: %1$d sn</string>
+    <string name="desktop_eta_minutes">Kalan süre: %1$d dk</string>
+    <string name="desktop_eta_hours">Kalan süre: %1$d sa %2$d dk</string>
+    <string name="desktop_cancel">İptal</string>
     <string name="desktop_stopping">Masaüstü durduruluyor...</string>
     <string name="desktop_not_available">Desktop Mode için en az 6 GB RAM\'e sahip bir telefon gerekir ve bunda daha azı var.</string>
     <string name="desktop_need_files">Projelerinizin çalışma alanı klasöründe durabilmesi için tüm dosyalara erişime izin verin, sonra Desktop Mode\'u yeniden açın.</string>

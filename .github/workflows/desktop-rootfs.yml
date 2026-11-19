@@ -1,0 +1,64 @@
+name: Desktop Mode system
+
+# Builds the Debian system that Desktop Mode downloads on first use (screen stack, VSCodium,
+# toolchain) and publishes it as the files of the release tagged "desktop-rootfs":
+#   rootfs.tar.xz         the system
+#   rootfs.manifest.json  url, sha256, size; the app reads this first (pins.json: download.manifest_url)
+# The repository must be public (or the release files otherwise reachable without a login),
+# because the app downloads them without any sign-in.
+#
+# To rebuild by hand, change VSCODIUM_VERSION or scripts/desktop-packages.txt and push (no manual
+# trigger, so the write permission below cannot be reached from a dispatch).
+#
+# STATUS: the chroot half of the build script is UNTESTED; the first run of this workflow is its test.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/build-desktop-rootfs.sh
+      - scripts/desktop-packages.txt
+      - VSCODIUM_VERSION
+      - android/app/src/main/assets/desktop/pins.json
+      - .github/workflows/desktop-rootfs.yml
+
+concurrency:
+  group: desktop-rootfs
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rootfs:
+    name: Build and publish the Desktop Mode system
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the emulator the system is built under
+        # The static emulator comes from a container image (the apt package qemu-user-static
+        # is gone on newer runner images); it registers with the F flag.
+        run: docker run --privileged --rm tonistiigi/binfmt --install arm64
+
+      - name: Build the system
+        run: sudo -E bash scripts/build-desktop-rootfs.sh
+        env:
+          DESKTOP_OUT_DIR: ${{ github.workspace }}/build/desktop-rootfs
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Publish the release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          out=build/desktop-rootfs
+          if ! gh release view desktop-rootfs >/dev/null 2>&1; then
+            gh release create desktop-rootfs --title "Desktop Mode system" \
+              --notes "The system the app downloads the first time Desktop Mode is set up. Built by the desktop-rootfs workflow."
+          fi
+          # The archive first, the manifest last: the app never sees a manifest whose file is missing.
+          gh release upload desktop-rootfs "$out/rootfs.tar.xz" --clobber
+          gh release upload desktop-rootfs "$out/rootfs.manifest.json" "$out/rootfs.meta.json" --clobber

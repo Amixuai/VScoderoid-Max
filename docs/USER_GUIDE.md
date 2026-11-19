@@ -1019,8 +1019,8 @@ Setup](#installing-after-setup) and remove it there.
 Desktop Mode is the real desktop VSCodium (the Electron build of VS Code that runs on a
 PC) running in a Debian Linux system inside the app. Its screen is shown in the app.
 It is experimental: it has not yet been verified on every device. The editor you
-already use stays the default; Desktop Mode is a second launcher entry named
-**Desktop Mode**.
+already use stays the default. The app has one icon; Desktop Mode is a shortcut on it
+(long-press the app icon and choose **Desktop Mode**).
 
 Desktop Mode is meant to be a PC. There is no button, menu or command in it that a
 laptop does not have, so what you learn here carries over when you move to a computer.
@@ -1031,13 +1031,17 @@ laptop does not have, so what you learn here carries over when you move to a com
 | ----------- | ------- |
 | Phone       | arm64, Android 11 or newer |
 | RAM         | 6 GB (Desktop Mode is not offered below this) |
-| Storage     | several GB free for the unpacked system, plus your packages |
+| Storage     | several GB free: the system is downloaded once (about 1 GB, the app shows the size) and unpacked, and the download file is deleted right after |
+| Network     | for the first setup only (Wi-Fi recommended); a lost connection never loses what was already downloaded |
 
 ### Starting It
 
-1. Open **Desktop Mode** from the launcher.
-2. The first time, the app unpacks its Debian system. This takes a few minutes, needs no
-   network, and happens once.
+1. The first time you open the app, it starts downloading the Desktop Mode system in the
+   background. Nothing is bundled in the app itself, so the app stays small.
+2. Open **Desktop Mode** from the app icon's shortcut. A portrait screen shows the download
+   (size, speed, time left), then a separate bar for setting up the environment. If the
+   network drops, it waits and continues from where it stopped, even hours later. **Cancel**
+   keeps what was downloaded. It happens once.
 3. If Android asks for access to all files, allow it: your projects live in the
    workspace folder on shared storage, as in the normal editor.
 4. The desktop appears with VSCodium open on your workspace.
@@ -1048,7 +1052,7 @@ are done.
 
 ### Using It
 
-The screen is landscape only. The picture is Termux:X11, built into the app. Input is its own touch handling:
+The picture is Termux:X11, built into the app, and fills the whole screen of your phone or tablet at its own resolution. Closing the editor ends the session and returns to the app; open Desktop Mode again to start it. Input is Termux:X11's own touch handling:
 
 - **Tap** is a left click, **two-finger tap** a right click, **two fingers** scroll.
 - A hardware keyboard works as on a PC. The on-screen keyboard
@@ -1057,9 +1061,9 @@ The screen is landscape only. The picture is Termux:X11, built into the app. Inp
 
 ### What Is Inside
 
-Everything is already installed, with nothing to download and no command to run first:
+Everything comes with the one-time download, with no command to run first:
 gcc and g++, make and cmake, Python 3 with venv and pip, Node.js with npm, pnpm and yarn,
-PHP with composer, Go, Rust with cargo, Ruby, Java (OpenJDK), SQLite, Git, `sudo` and the
+PHP with composer, Rust with cargo, Ruby, Java (OpenJDK), SQLite, Git, `sudo` and the
 usual tools such as vim, tmux, jq and rsync. Only the packages you install yourself (`npm install`,
 `pip install`, `cargo build` and so on) come from your own commands, as on a PC.
 

@@ -8,6 +8,9 @@
     "strip_components": 1,
     "unpacked_bytes_estimate": 600000000
   },
+  "download": {
+    "manifest_url": "https://github.com/Amixuai/Vscoderoid-Pro/releases/download/desktop-rootfs/rootfs.manifest.json"
+  },
   "dns": ["1.1.1.1", "8.8.8.8"],
   "mirror": "http://deb.debian.org/debian",
   "security_mirror": "http://deb.debian.org/debian-security"

@@ -601,7 +601,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">デスクトップを起動しています...</string>
-    <string name="desktop_preparing">Desktop Mode を準備しています。数分かかりますが、初回のみです。</string>
+    <string name="desktop_downloading">Desktop Mode をダウンロード中</string>
+    <string name="desktop_waiting_network">ネットワークを待っています。ダウンロードは中断した位置から再開されます。</string>
+    <string name="desktop_unpacking">環境をセットアップ中...</string>
+    <string name="desktop_progress_of">%1$s / %2$s</string>
+    <string name="desktop_speed">%1$s/秒</string>
+    <string name="desktop_eta_unknown">残り時間: 計算中...</string>
+    <string name="desktop_eta_seconds">残り時間: %1$d 秒</string>
+    <string name="desktop_eta_minutes">残り時間: %1$d 分</string>
+    <string name="desktop_eta_hours">残り時間: %1$d 時間 %2$d 分</string>
+    <string name="desktop_cancel">キャンセル</string>
     <string name="desktop_stopping">デスクトップを停止しています...</string>
     <string name="desktop_not_available">Desktop Mode には 6 GB 以上の RAM を搭載したスマートフォンが必要です。この端末はそれより少ないです。</string>
     <string name="desktop_need_files">プロジェクトをワークスペースフォルダーに置けるよう、すべてのファイルへのアクセスを許可してから、Desktop Mode をもう一度開いてください。</string>

@@ -613,7 +613,16 @@
 
     <!-- Desktop Mode (work packages WP5 to WP7). -->
     <string name="desktop_starting">Запуск рабочего стола...</string>
-    <string name="desktop_preparing">Подготовка Desktop Mode. Это займёт несколько минут и произойдёт только один раз.</string>
+    <string name="desktop_downloading">Загрузка Desktop Mode</string>
+    <string name="desktop_waiting_network">Ожидание сети. Загрузка продолжится с места остановки.</string>
+    <string name="desktop_unpacking">Настройка среды...</string>
+    <string name="desktop_progress_of">%1$s из %2$s</string>
+    <string name="desktop_speed">%1$s/с</string>
+    <string name="desktop_eta_unknown">Осталось: вычисляется...</string>
+    <string name="desktop_eta_seconds">Осталось: %1$d с</string>
+    <string name="desktop_eta_minutes">Осталось: %1$d мин</string>
+    <string name="desktop_eta_hours">Осталось: %1$d ч %2$d мин</string>
+    <string name="desktop_cancel">Отмена</string>
     <string name="desktop_stopping">Остановка рабочего стола...</string>
     <string name="desktop_not_available">Для Desktop Mode нужен телефон с оперативной памятью не менее 6 ГБ, а у этого её меньше.</string>
     <string name="desktop_need_files">Разрешите доступ ко всем файлам, чтобы ваши проекты могли храниться в папке рабочего пространства, и снова откройте Desktop Mode.</string>
