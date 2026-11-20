@@ -7,20 +7,14 @@ name: Desktop Mode system
 # The repository must be public (or the release files otherwise reachable without a login),
 # because the app downloads them without any sign-in.
 #
-# To rebuild by hand, change VSCODIUM_VERSION or scripts/desktop-packages.txt and push (no manual
-# trigger, so the write permission below cannot be reached from a dispatch).
+# Only people with write access to the repository can start it by hand.
 #
 # STATUS: the chroot half of the build script is UNTESTED; the first run of this workflow is its test.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/build-desktop-rootfs.sh
-      - scripts/desktop-packages.txt
-      - VSCODIUM_VERSION
-      - android/app/src/main/assets/desktop/pins.json
-      - .github/workflows/desktop-rootfs.yml
+  # By hand only: Actions tab, "Run workflow", or `gh workflow run desktop-rootfs.yml` from a
+  # terminal. Run it once, and again whenever the system's files change.
+  workflow_dispatch:
 
 concurrency:
   group: desktop-rootfs
@@ -32,7 +26,7 @@ permissions:
 jobs:
   rootfs:
     name: Build and publish the Desktop Mode system
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
