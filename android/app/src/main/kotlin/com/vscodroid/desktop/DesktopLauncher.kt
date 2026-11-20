@@ -220,6 +220,7 @@ class DesktopLauncher(
         env["DESKTOP_DIR"] = layerDir.absolutePath
         env["DESKTOP_BINDS"] = plan.binds.joinToString("\n") { it.spec() }
         env["DESKTOP_NO_SECCOMP"] = if (noSeccomp) "1" else "0"
+        env["DESKTOP_WORKSPACE"] = DesktopStorage.GUEST_WORKSPACE
         env["DESKTOP_DENSITY"] = java.lang.String.format(java.util.Locale.US, "%.2f", density.coerceIn(1f, 4f))
         return env
     }

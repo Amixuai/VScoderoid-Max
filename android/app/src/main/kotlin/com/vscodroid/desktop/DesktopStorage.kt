@@ -60,6 +60,9 @@ class DesktopStorage(
             GuestFs.ensureDirs(rootfsDir, GuestFs.parts(guest), chmod, verified)
         }
         GuestFs.ensureDirs(rootfsDir, GuestFs.parts(GUEST_WORKSPACE), chmod, verified)
+        for (guest in listOf(GUEST_STORAGE, GUEST_SDCARD)) {
+            GuestFs.ensureDirs(rootfsDir, GuestFs.parts(guest), chmod, verified)
+        }
     }
 
     /**
@@ -87,7 +90,12 @@ class DesktopStorage(
     fun plan(): Plan {
         val binds = ArrayList<Bind>()
         val skipped = ArrayList<Skipped>()
-        binds += Bind(publicRoot, GUEST_WORKSPACE)
+        // The phone's shared storage, at the paths a person (and every Android file manager) knows,
+        // so Open Folder, Open File and Save reach the same files as the rest of the phone.
+        binds += Bind(File(HOST_STORAGE), GUEST_STORAGE)
+        binds += Bind(File(HOST_STORAGE), GUEST_SDCARD)
+        // The workspace sits inside that storage, so it needs no bind of its own when the paths agree.
+        if (publicRoot.absolutePath != GUEST_WORKSPACE) binds += Bind(publicRoot, GUEST_WORKSPACE)
         // The phone's shared storage, at the same paths the host uses, so a file chosen anywhere
         // there opens with the same path it has on Android.
         for (shared in SHARED_STORAGE) {
@@ -149,7 +157,13 @@ class DesktopStorage(
     }
 
     companion object {
-        const val GUEST_WORKSPACE = "/root/workspace"
+        /** Where the phone's shared storage appears in the guest, and under its usual short name. */
+        const val GUEST_STORAGE = "/storage/emulated/0"
+        const val GUEST_SDCARD = "/sdcard"
+        const val HOST_STORAGE = "/storage/emulated/0"
+
+        /** The public workspace, at its real path, so the editor opens it and dialogs start there. */
+        const val GUEST_WORKSPACE = "/storage/emulated/0/.VScoderoid-Pro"
         private val SHARED_STORAGE = listOf("/storage/emulated/0", "/sdcard")
         private const val PROJECT_FILE = ".project"
 

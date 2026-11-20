@@ -12,6 +12,7 @@
 #   DESKTOP_DIR         filesDir/proot_layer (session files, never inside the tree)
 #   DESKTOP_BINDS       one host:guest bind per line (workspace, caches, project folders)
 #   DESKTOP_NO_SECCOMP  1 to run proot with PROOT_NO_SECCOMP=1 (the fallback)
+#   DESKTOP_WORKSPACE   the guest path of the public workspace the editor opens
 #   DESKTOP_DENSITY     the phone's screen density (for example 2.75), for the editor's scale
 # PROOT_LOADER, PROOT_TMP_DIR and LD_LIBRARY_PATH come from the app's own
 # environment (util/Environment.kt) and are passed through untouched.
@@ -92,11 +93,11 @@ desktop_start() {
 }
 
 exec_session() {
-    desktop_proot_exec "READY_MARKER=$DESKTOP_READY_MARKER" "DENSITY=${DESKTOP_DENSITY:-1.00}" -- \
+    desktop_proot_exec "READY_MARKER=$DESKTOP_READY_MARKER" "DENSITY=${DESKTOP_DENSITY:-1.00}" "WORKSPACE=${DESKTOP_WORKSPACE:-/storage/emulated/0/.VScoderoid-Pro}" -- \
         /bin/bash -c '
 set -u
 umask 077
-mkdir -p /root/workspace /tmp/.X11-unix
+mkdir -p "$WORKSPACE" /tmp/.X11-unix
 export DISPLAY=:0
 # Wait for the app'"'"'s X server (Termux:X11) to answer from in here, then say so.
 i=0
@@ -162,7 +163,7 @@ while :; do
     rm -rf /root/.config/VSCodium/logs
     /usr/share/codium/codium $COMMON $(variant_flags "$v") \
         --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions \
-        /root/workspace >/tmp/codium.log 2>&1 &
+        "$WORKSPACE" >/tmp/codium.log 2>&1 &
     cpid=$!
     echo "variant $v started" >> /tmp/codium.log
     crashed=0

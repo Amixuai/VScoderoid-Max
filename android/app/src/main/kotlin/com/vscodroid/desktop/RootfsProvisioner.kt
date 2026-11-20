@@ -140,10 +140,16 @@ class RootfsProvisioner(
                     if (available < needed) return Result.InsufficientStorage(needed, available)
                     extract({ bundled.open() }, bundled.sha256, bundled.bytes, 0)?.let { return it }
                 } else {
-                    val manifest = when (val m = fetchManifest()) {
+                    val found = when (val m = fetchManifest()) {
                         is ManifestResult.Failed -> return m.result
                         is ManifestResult.Found -> m.manifest
                     }
+                    // The archive is the file of that name next to the manifest, whatever address the
+                    // manifest was built with: the two always travel together, so a renamed or moved
+                    // repository cannot leave the app pointing at a dead address.
+                    val manifest = found.copy(
+                        url = pins.manifestUrl.substringBeforeLast('/') + "/" + found.url.substringAfterLast('/'),
+                    )
                     stampSha = manifest.sha256
                     val have = if (partFile.isFile) minOf(partFile.length(), manifest.bytes) else 0L
                     // The archive plus the unpacked tree exist together while unpacking, then the archive goes.
@@ -563,7 +569,7 @@ class RootfsProvisioner(
             unpackedBytes = o.getLong("unpacked_bytes"),
             stripComponents = o.optInt("strip_components", 0),
         )
-        require(m.url.startsWith("https://")) { "the manifest names a download that is not https" }
+        require(m.url.isNotBlank()) { "the manifest names no file" }
         require(SHA256.matches(m.sha256)) { "the manifest digest is not a SHA-256" }
         require(m.bytes > 0 && m.unpackedBytes > 0) { "the manifest sizes are not positive" }
         require(m.stripComponents in 0..2) { "strip_components out of range" }

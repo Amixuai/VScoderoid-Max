@@ -1074,7 +1074,9 @@ Extensions come from Open VSX, the same registry the normal editor uses.
 
 Your projects are in the hidden folder `.VScoderoid-Pro` on shared storage (turn on
 "show hidden files" in your file manager to see it), and appear inside the desktop as
-`/root/workspace`. Folders such as `node_modules`, `.venv`, `target` and `vendor` are
+`/storage/emulated/0/.VScoderoid-Pro`; the editor opens it at start, so Open Folder, Open File
+and Save dialogs begin in your phone's storage. The phone's shared storage is also available at
+`/storage/emulated/0` and `/sdcard`, as on any Android app. Folders such as `node_modules`, `.venv`, `target` and `vendor` are
 kept in private storage and appear in your project at the usual path, because shared
 storage cannot hold symbolic links or executable files.
 

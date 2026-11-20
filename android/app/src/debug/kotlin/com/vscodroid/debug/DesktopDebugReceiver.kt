@@ -8,6 +8,7 @@ import android.util.Log
 import com.vscodroid.desktop.DesktopLauncher
 import com.vscodroid.desktop.DesktopPins
 import com.vscodroid.desktop.DesktopRuntime
+import com.vscodroid.desktop.DesktopStorage
 import com.vscodroid.desktop.RootfsProvisioner
 import com.vscodroid.util.Environment
 import java.io.File
@@ -145,7 +146,7 @@ internal object DesktopDebug {
         Os.chmod(script.path, 0x1ED)
         write(context, listOf("DESKTOP-WP3a-storage|RUNNING|minutes; apt-get install build-essential python3 nodejs npm cargo golang first for full coverage"))
         val (exit, out) = l.runInGuest(
-            listOf("/bin/bash", "/root/vsc_storage_test.sh", "/root/workspace/.vsc-storage-test", "/root/.vsc-storage-test"),
+            listOf("/bin/bash", "/root/vsc_storage_test.sh", "${DesktopStorage.GUEST_WORKSPACE}/.vsc-storage-test", "/root/.vsc-storage-test"),
             timeoutSeconds = 3000, withBinds = true,
         )
         val lines = out.lines().filter { it.startsWith("STORAGE-") }

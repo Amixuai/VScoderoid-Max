@@ -8,6 +8,8 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
 class DesktopStorageTest {
+
+    private val WS = DesktopStorage.GUEST_WORKSPACE
     @TempDir
     lateinit var tmp: File
 
@@ -24,7 +26,7 @@ class DesktopStorageTest {
         File(pub, "app").mkdirs()
         File(pub, "app/package.json").writeText("{}")
         val plan = s.plan()
-        val bind = plan.binds.single { it.guest == "/root/workspace/app/node_modules" }
+        val bind = plan.binds.single { it.guest == "$WS/app/node_modules" }
         assertTrue(File(pub, "app/node_modules").isDirectory)
         assertEquals(0, File(pub, "app/node_modules").list()!!.size)
         assertTrue(bind.host.absolutePath.startsWith(File(engine, "local_project_deps").absolutePath))
@@ -59,8 +61,8 @@ class DesktopStorageTest {
         File(pub, "mix/Cargo.toml").writeText("")
         File(pub, "mix/requirements.txt").writeText("")
         val guests = s.plan().binds.map { it.guest }
-        assertTrue("/root/workspace/mix/target" in guests)
-        assertTrue("/root/workspace/mix/.venv" in guests)
+        assertTrue("$WS/mix/target" in guests)
+        assertTrue("$WS/mix/.venv" in guests)
     }
 
     @Test

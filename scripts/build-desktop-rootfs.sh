@@ -239,7 +239,7 @@ json.dump({
     "packages": [n for n in names if n],
 }, open(out, "w"), indent=2)
 PY
-ROOTFS_URL="${DESKTOP_ROOTFS_URL:-https://github.com/${GITHUB_REPOSITORY:-Amixuai/Vscoderoid-Pro}/releases/download/desktop-rootfs/rootfs.tar.xz}"
+ROOTFS_URL="${DESKTOP_ROOTFS_URL:-https://github.com/${GITHUB_REPOSITORY:-Amixuai/VScoderoid-Max}/releases/download/desktop-rootfs/rootfs.tar.xz}"
 python3 -I - "$OUT_DIR/rootfs.manifest.json" "$ROOTFS_URL" "$SHA" "$BYTES" "$UNPACKED" <<'PY'
 import json, sys
 out, url, sha, nbytes, unpacked = sys.argv[1:6]
