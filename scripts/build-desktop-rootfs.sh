@@ -240,10 +240,13 @@ json.dump({
 }, open(out, "w"), indent=2)
 PY
 ROOTFS_URL="${DESKTOP_ROOTFS_URL:-https://github.com/${GITHUB_REPOSITORY:-Amixuai/VScoderoid-Max}/releases/download/desktop-rootfs/rootfs.tar.xz}"
-python3 -I - "$OUT_DIR/rootfs.manifest.json" "$ROOTFS_URL" "$SHA" "$BYTES" "$UNPACKED" <<'PY'
+python3 -I - "$OUT_DIR/rootfs.manifest.json" "$ROOTFS_URL" "$SHA" "$BYTES" "$UNPACKED" "$ASSETS_DIR/pins.json" <<'PY'
 import json, sys
-out, url, sha, nbytes, unpacked = sys.argv[1:6]
+out, url, sha, nbytes, unpacked, pins = sys.argv[1:7]
+# The revision comes from pins.json (download.min_revision): raise it there when what is installed
+# inside the system changes, and phones that already have an older system download this one.
+revision = json.load(open(pins))["download"]["min_revision"]
 json.dump({"schema": 1, "url": url, "sha256": sha, "bytes": int(nbytes),
-           "unpacked_bytes": int(unpacked), "strip_components": 0}, open(out, "w"), indent=2)
+           "unpacked_bytes": int(unpacked), "strip_components": 0, "revision": revision}, open(out, "w"), indent=2)
 PY
 echo "=== Done: rootfs.tar.xz $((BYTES / 1048576)) MiB, unpacks to $((UNPACKED / 1048576)) MiB, editor $VER ==="

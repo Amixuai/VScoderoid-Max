@@ -24,5 +24,11 @@ object DesktopViewer {
         // Fill the whole screen: with the display at the phone's own size there is nothing to
         // stretch, and any left-over band is filled instead of staying black.
         "displayStretch" to true,
+        // A finger touches what it touches (Termux:X11's value 3 is "Direct touch"; 1 is the
+        // trackpad mode, which moves a pointer instead).
+        "touchMode" to "3",
+        // Android's Back sends the X11 Escape key (closes popups, cancels dialogs) and never
+        // opens the keyboard. The keyboard follows focus instead (see wrapper.sh).
+        "backButtonAction" to "send escape",
     )
 }

@@ -36,6 +36,12 @@ data class DesktopPins(
      * Desktop Mode is not available instead of guessing a URL.
      */
     val manifestUrl: String = "",
+    /**
+     * The oldest system revision this app accepts. The system on the phone is replaced (downloaded
+     * again) when its revision is lower, so a change to what is installed inside it, for example a
+     * new package the app now needs, reaches phones that already have an older one.
+     */
+    val minRevision: Int = 0,
 ) {
     val downloadable: Boolean
         get() = manifestUrl.startsWith("https://")
@@ -73,6 +79,7 @@ data class DesktopPins(
                 mirror = root.getString("mirror"),
                 securityMirror = root.getString("security_mirror"),
                 manifestUrl = root.optJSONObject("download")?.optString("manifest_url", "").orEmpty(),
+                minRevision = root.optJSONObject("download")?.optInt("min_revision", 0) ?: 0,
             )
             require(pins.manifestUrl.isEmpty() || pins.manifestUrl.startsWith("https://")) { "manifest_url must be https" }
             require(SUITE.matches(pins.suite)) { "suite is not a plain name" }

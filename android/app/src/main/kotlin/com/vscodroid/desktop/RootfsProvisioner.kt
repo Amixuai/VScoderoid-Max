@@ -94,6 +94,8 @@ class RootfsProvisioner(
         val bytes: Long,
         val unpackedBytes: Long,
         val stripComponents: Int,
+        /** Which build of the system this is; compared with the app's [DesktopPins.minRevision]. */
+        val revision: Int = 0,
     )
 
     private class PermanentFailure(message: String) : IOException(message)
@@ -120,7 +122,7 @@ class RootfsProvisioner(
     /** True when a previous run finished: the tree is there and the ready marker names this suite. */
     fun isReady(): Boolean =
         rootfsDir.isDirectory && readyMarker.isFile &&
-            runCatching { readyMarker.readText().startsWith("suite=${pins.suite}\n") }.getOrDefault(false)
+            stampMatches(readyMarker)
 
     fun provision(): Result {
         try {
@@ -130,6 +132,7 @@ class RootfsProvisioner(
 
             val needsBuild = !(rootfsDir.isDirectory && stampMatches(extractedStamp))
             var stampSha = bundled?.sha256 ?: ""
+            var stampRevision = pins.minRevision
             if (needsBuild) {
                 report(Phase.Preflight, 0, 0)
                 GuestFs.deleteTree(readyMarker, desktopDir)
@@ -151,6 +154,15 @@ class RootfsProvisioner(
                         url = pins.manifestUrl.substringBeforeLast('/') + "/" + found.url.substringAfterLast('/'),
                     )
                     stampSha = manifest.sha256
+                    stampRevision = manifest.revision
+                    if (manifest.revision < pins.minRevision) {
+                        // The app needs a newer system than the one published so far (its build is still
+                        // running, or failed). Nothing is downloaded that the app could not use.
+                        return Result.Network(
+                            "the system the app needs (revision ${pins.minRevision}) is not published yet; " +
+                                "the published one is revision ${manifest.revision}. Try again later.",
+                        )
+                    }
                     val have = if (partFile.isFile) minOf(partFile.length(), manifest.bytes) else 0L
                     // The archive plus the unpacked tree exist together while unpacking, then the archive goes.
                     val needed = (manifest.bytes - have) + manifest.unpackedBytes + SAFETY_BYTES
@@ -164,9 +176,10 @@ class RootfsProvisioner(
                 GuestFs.deleteTree(partFile, downloadDir)
                 GuestFs.deleteTree(manifestCache, downloadDir)
                 GuestFs.deleteTree(downloadDir, desktopDir)
-                writeStamp(extractedStamp, stampSha)
+                writeStamp(extractedStamp, stampSha, stampRevision)
             } else {
                 stampSha = runCatching { readStampSha(extractedStamp) }.getOrDefault("")
+                stampRevision = stampRevisionOf(extractedStamp)
             }
 
             try {
@@ -174,7 +187,7 @@ class RootfsProvisioner(
             } catch (e: IOException) {
                 return Result.ConfigureFailed(e.message ?: e.javaClass.simpleName)
             }
-            writeStamp(readyMarker, stampSha)
+            writeStamp(readyMarker, stampSha, stampRevision)
             return done()
         } catch (e: CancellationException) {
             return Result.Cancelled
@@ -542,18 +555,26 @@ class RootfsProvisioner(
 
     // ------------------------------------------------------------------ stamps
 
-    private fun stampText(sha: String): String = "suite=${pins.suite}\nsha256=$sha\n"
+    private fun stampText(sha: String, revision: Int): String =
+        "suite=${pins.suite}\nsha256=$sha\nrevision=$revision\n"
 
-    /** A stamp exists and names this suite; the digest in it is for the record, not compared. */
+    /** A stamp exists, names this suite and is not older than the app needs; the digest is for the record. */
     private fun stampMatches(file: File): Boolean =
-        file.isFile && runCatching { file.readText().startsWith("suite=${pins.suite}\n") }.getOrDefault(false)
+        file.isFile && runCatching { file.readText().startsWith("suite=${pins.suite}\n") }.getOrDefault(false) &&
+            stampRevisionOf(file) >= pins.minRevision
+
+    /** The revision in a stamp; 0 for a stamp written before revisions existed. */
+    private fun stampRevisionOf(file: File): Int =
+        runCatching {
+            file.readLines().firstOrNull { it.startsWith("revision=") }?.removePrefix("revision=")?.trim()?.toInt() ?: 0
+        }.getOrDefault(0)
 
     private fun readStampSha(file: File): String =
         file.readLines().firstOrNull { it.startsWith("sha256=") }?.removePrefix("sha256=").orEmpty()
 
-    private fun writeStamp(file: File, sha: String) {
+    private fun writeStamp(file: File, sha: String, revision: Int) {
         val temp = File(desktopDir, file.name + ".tmp")
-        temp.writeText(stampText(sha))
+        temp.writeText(stampText(sha, revision))
         if (!temp.renameTo(file)) throw IOException("could not write ${file.name}")
     }
 
@@ -568,6 +589,7 @@ class RootfsProvisioner(
             bytes = o.getLong("bytes"),
             unpackedBytes = o.getLong("unpacked_bytes"),
             stripComponents = o.optInt("strip_components", 0),
+            revision = o.optInt("revision", 0),
         )
         require(m.url.isNotBlank()) { "the manifest names no file" }
         require(SHA256.matches(m.sha256)) { "the manifest digest is not a SHA-256" }
@@ -578,7 +600,8 @@ class RootfsProvisioner(
 
     private fun manifestToJson(m: Manifest): String = org.json.JSONObject()
         .put("schema", 1).put("url", m.url).put("sha256", m.sha256).put("bytes", m.bytes)
-        .put("unpacked_bytes", m.unpackedBytes).put("strip_components", m.stripComponents).toString()
+        .put("unpacked_bytes", m.unpackedBytes).put("strip_components", m.stripComponents)
+        .put("revision", m.revision).toString()
 
     private fun report(phase: Phase, done: Long, total: Long) = progress(Progress(phase, done, total))
 

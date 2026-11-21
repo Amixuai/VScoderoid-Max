@@ -72,3 +72,11 @@ rsync
 htop
 tmux
 file
+
+# --- Keyboard follows focus, hidden pointer, native file dialog (Desktop Mode) ---
+at-spi2-core
+python3-pyatspi
+dbus
+unclutter-xfixes
+gsettings-desktop-schemas
+adwaita-icon-theme
