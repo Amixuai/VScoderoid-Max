@@ -76,6 +76,7 @@ file
 # --- Keyboard follows focus, hidden pointer, native file dialog (Desktop Mode) ---
 at-spi2-core
 python3-pyatspi
+python3-gi
 dbus
 unclutter-xfixes
 gsettings-desktop-schemas

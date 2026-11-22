@@ -17,7 +17,7 @@ class DesktopViewerTest {
         assertEquals(true, p["displayStretch"], "no black bands around the picture")
         assertEquals("3", p["touchMode"], "direct touch, not the trackpad")
         assertEquals("send escape", p["backButtonAction"], "Back never opens the keyboard")
-        assertEquals(false, p["showAdditionalKbd"], "no extra keys bar")
+        assertEquals("toggle soft keyboard", p["volumeDownAction"], "a fallback that needs no automation")
     }
 
     @Test

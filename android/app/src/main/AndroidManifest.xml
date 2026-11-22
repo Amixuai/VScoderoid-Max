@@ -206,6 +206,7 @@
             android:exported="false"
             android:label="@string/desktop_label"
             android:launchMode="singleTop"
+            android:alwaysRetainTaskState="true"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density"
             android:windowSoftInputMode="adjustPan"
@@ -221,6 +222,7 @@
         <activity
             android:name="com.termux.x11.MainActivity"
             android:exported="false"
+            android:alwaysRetainTaskState="true"
             android:screenOrientation="sensorLandscape"
             tools:replace="android:exported">
             <intent-filter tools:node="removeAll" />
@@ -232,6 +234,14 @@
             tools:replace="android:exported">
             <intent-filter tools:node="removeAll" />
         </activity>
+        <!-- Opens Android's own folder/file picker for the editor's Open Folder, Open File and Save
+             dialogs in Desktop Mode (see PickerProtocol). No screen of its own. -->
+        <activity
+            android:name=".desktop.DesktopPickerActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <service android:name="com.termux.x11.utils.KeyInterceptor" tools:node="remove" />
         <receiver
             android:name="com.termux.x11.LoriePreferences$Receiver"

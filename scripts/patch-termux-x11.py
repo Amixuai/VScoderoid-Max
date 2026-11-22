@@ -78,38 +78,71 @@ edit(
     '            case "send volume up": return (key, down) -> mActivity.getLorieView().sendKeyEvent(0, KEYCODE_VOLUME_UP, down);',
 )
 
-# 5. Keyboard follows focus. The Debian side watches the accessibility tree (AT-SPI) and writes
-#    "1 <n>" into <files>/debian/tmp/.X11-unix/vsc-ime when an editable field takes focus (or is
-#    tapped again) and "0 <n>" when anything else does; this screen shows or hides the keyboard
-#    to match. The file is read by polling: it is tiny and the folder may not exist yet.
+# 5. Two bridges to the Debian side, both plain files in the guest's /tmp/.X11-unix (the X server's
+#    own folder, which the app can read as <files>/debian_rootfs/tmp/.X11-unix; the name of
+#    that folder is DesktopRuntime.ROOTFS_NAME, pinned by a unit test):
+#    - vsc-ime: "1 <n>" when an editable field takes focus (or is tapped again) and "0 <n>" when
+#      anything else does; the keyboard is shown or hidden to match.
+#    - vsc-pick-req: a request from the editor's Open Folder / Open File / Save dialog; the
+#      Android system picker is opened for it (DesktopPickerActivity), and its answer goes back
+#      through vsc-pick-res.
+#    Both are read by polling: the files are tiny and the folder may not exist yet. What is
+#    already in a file when this screen starts is old news and is not acted on.
 main = "lorie/src/main/java/com/termux/x11/MainActivity.java"
 edit(
     main,
     "    @Override\n    public void onResume() {\n        super.onResume();\n        if (redirected)\n            return;\n",
-    """    // VSCodroid: keyboard follows focus (see the Debian side's vsc-ime-bridge in wrapper.sh).
+    """    // VSCodroid: keyboard follows focus and file dialogs use the Android picker (see wrapper.sh).
     private volatile boolean vscImeRun;
     private Thread vscImeThread;
+
+    private static String vscRead(java.io.File file) {
+        try {
+            long size = file.length();
+            if (!file.isFile() || size <= 0 || size > 2048)
+                return "";
+            byte[] buf = new byte[(int) size];
+            try (java.io.FileInputStream in = new java.io.FileInputStream(file)) {
+                int n = in.read(buf);
+                return n > 0 ? new String(buf, 0, n, java.nio.charset.StandardCharsets.UTF_8).trim() : "";
+            }
+        } catch (Throwable e) {
+            return "";
+        }
+    }
+
+    private void vscStartPicker(String request) {
+        try {
+            startActivity(new android.content.Intent()
+                    .setClassName(getPackageName(), "com.vscodroid.desktop.DesktopPickerActivity")
+                    .putExtra("request", request));
+        } catch (Throwable ignored) {
+        }
+    }
 
     private void vscStartImeBridge() {
         if (vscImeThread != null)
             return;
         vscImeRun = true;
-        final java.io.File file = new java.io.File(getFilesDir(), "debian/tmp/.X11-unix/vsc-ime");
+        final java.io.File dir = new java.io.File(getFilesDir(), "debian_rootfs/tmp/.X11-unix");
+        final java.io.File imeFile = new java.io.File(dir, "vsc-ime");
+        final java.io.File pickFile = new java.io.File(dir, "vsc-pick-req");
         vscImeThread = new Thread(() -> {
-            String last = "";
+            String lastIme = vscRead(imeFile);
+            String lastPick = vscRead(pickFile);
             while (vscImeRun) {
                 try {
-                    if (file.isFile() && file.length() > 0 && file.length() < 64) {
-                        byte[] buf = new byte[(int) file.length()];
-                        try (java.io.FileInputStream in = new java.io.FileInputStream(file)) {
-                            int n = in.read(buf);
-                            String now = n > 0 ? new String(buf, 0, n, java.nio.charset.StandardCharsets.US_ASCII).trim() : "";
-                            if (!now.isEmpty() && !now.equals(last)) {
-                                last = now;
-                                final boolean show = now.startsWith("1");
-                                runOnUiThread(() -> getLorieView().setKeyboardVisible(show));
-                            }
-                        }
+                    String ime = vscRead(imeFile);
+                    if (!ime.isEmpty() && !ime.equals(lastIme)) {
+                        lastIme = ime;
+                        final boolean show = ime.startsWith("1");
+                        runOnUiThread(() -> getLorieView().setKeyboardVisible(show));
+                    }
+                    String pick = vscRead(pickFile);
+                    if (!pick.isEmpty() && !pick.equals(lastPick)) {
+                        lastPick = pick;
+                        final String request = pick;
+                        runOnUiThread(() -> vscStartPicker(request));
                     }
                     Thread.sleep(120);
                 } catch (InterruptedException e) {

@@ -30,5 +30,8 @@ object DesktopViewer {
         // Android's Back sends the X11 Escape key (closes popups, cancels dialogs) and never
         // opens the keyboard. The keyboard follows focus instead (see wrapper.sh).
         "backButtonAction" to "send escape",
+        // A way to type that does not depend on the automatic keyboard: the volume-down key
+        // opens and closes it (no button on the screen). Volume up still sets the volume.
+        "volumeDownAction" to "toggle soft keyboard",
     )
 }

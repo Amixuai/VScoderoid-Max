@@ -121,29 +121,178 @@ cat > /root/.config/openbox/rc.xml <<XML
   </applications>
 </openbox_config>
 XML
-# --- Keyboard that follows focus. A session bus and the accessibility bus (AT-SPI) run beside the
-# editor; a small watcher listens for focus on the screen and writes "1 <n>" (an editable field,
-# the keyboard should show) or "0 <n>" (anything else, hide it) into /tmp/.X11-unix/vsc-ime, which
-# the Termux:X11 screen reads. Chromium only builds its accessibility tree once the bus says a
-# screen reader is on, so that property is set here. Nothing below is needed to run the editor:
-# if a piece is missing the editor still starts, only without the keyboard automation.
-if command -v dbus-launch >/dev/null 2>&1; then
-    eval "$(dbus-launch --sh-syntax)"
-fi
-rm -f /tmp/.X11-unix/vsc-ime /tmp/.X11-unix/vsc-ime.tmp
-if [ -x /usr/libexec/at-spi-bus-launcher ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-    /usr/libexec/at-spi-bus-launcher --launch-immediately >/tmp/atspi.log 2>&1 &
-    sleep 1
+# --- Bridges between the editor and Android. A private session bus and the accessibility bus
+# (AT-SPI) run beside the editor, and both bridges talk to the app through small files in
+# /tmp/.X11-unix (the one folder the app can read):
+#   keyboard: a watcher listens for focus on the screen and writes "1 <n>" (an editable field,
+#     show the keyboard) or "0 <n>" (anything else, hide it) into vsc-ime. Chromium builds its
+#     accessibility tree only when asked, so the editor gets --force-renderer-accessibility below.
+#   file dialogs: this script answers as the desktop file-chooser service, so the editor asks it
+#     for Open Folder, Open File and Save; each request goes to the Android picker (vsc-pick-req
+#     and vsc-pick-res).
+# Nothing here is needed to run the editor: if a piece is missing it still starts, only without
+# that bridge, and the logs below say why.
+export DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/vsc-session-bus
+rm -f /tmp/vsc-session-bus /tmp/.X11-unix/vsc-ime /tmp/.X11-unix/vsc-ime.tmp \
+    /tmp/.X11-unix/vsc-pick-req /tmp/.X11-unix/vsc-pick-req.tmp \
+    /tmp/.X11-unix/vsc-pick-res /tmp/.X11-unix/vsc-pick-res.tmp
+mkdir -p /root/.cache
+if command -v dbus-daemon >/dev/null 2>&1 && \
+        dbus-daemon --session --fork --nopidfile --address="$DBUS_SESSION_BUS_ADDRESS" >/tmp/dbus.log 2>&1; then
+    export ACCESSIBILITY_ENABLED=1 GNOME_ACCESSIBILITY=1
+    cat > /root/.cache/vsc-portal.py <<\PYPORTAL
+import os, sys, time, urllib.parse
+try:
+    import gi
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+except Exception as e:
+    print("no Gio: " + str(e))
+    sys.exit(0)
+
+DIR = os.environ.get("VSC_PICK_DIR", "/tmp/.X11-unix")
+REQ = os.path.join(DIR, "vsc-pick-req")
+RES = os.path.join(DIR, "vsc-pick-res")
+WAIT_SECONDS = 900
+BASE = "/org/freedesktop/portal/desktop"
+
+XML = """
+<node>
+  <interface name="org.freedesktop.portal.FileChooser">
+    <method name="OpenFile">
+      <arg type="s" name="parent_window" direction="in"/>
+      <arg type="s" name="title" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="handle" direction="out"/>
+    </method>
+    <method name="SaveFile">
+      <arg type="s" name="parent_window" direction="in"/>
+      <arg type="s" name="title" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="handle" direction="out"/>
+    </method>
+    <property name="version" type="u" access="read"/>
+  </interface>
+</node>
+"""
+
+busy = [False]
+
+
+def remove(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def write_request(rid, kind, name):
+    tmp = REQ + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(rid + "\n" + kind + "\n" + name.replace("\n", " ") + "\n")
+    os.replace(tmp, REQ)
+
+
+def read_answer(rid):
+    try:
+        with open(RES) as f:
+            lines = f.read().split("\n")
+    except OSError:
+        return None
+    if not lines or lines[0] != rid:
+        return None
+    return [l for l in lines[1:] if l]
+
+
+def respond(conn, handle, paths):
+    if paths:
+        results = {"uris": GLib.Variant("as", ["file://" + urllib.parse.quote(p) for p in paths])}
+        code = 0
+    else:
+        results = {}
+        code = 1
+    conn.emit_signal(None, handle, "org.freedesktop.portal.Request", "Response",
+                     GLib.Variant("(ua{sv})", (code, results)))
+
+
+def poll(conn, handle, rid, deadline):
+    paths = read_answer(rid)
+    if paths is None and time.time() < deadline:
+        return True
+    remove(REQ)
+    remove(RES)
+    busy[0] = False
+    respond(conn, handle, paths or [])
+    return False
+
+
+def cancel_now(conn, handle):
+    respond(conn, handle, [])
+    return False
+
+
+def on_call(conn, sender, path, iface, method, params, inv):
+    try:
+        parent, title, opts = params.unpack()
+    except Exception:
+        inv.return_error_literal(Gio.dbus_error_quark(), Gio.DBusError.INVALID_ARGS, "bad arguments")
+        return
+    token = str(opts.get("handle_token", "vsc"))
+    handle = BASE + "/request/" + sender[1:].replace(".", "_") + "/" + token
+    name = ""
+    if method == "SaveFile":
+        kind = "save"
+        name = str(opts.get("current_name", ""))
+    elif opts.get("directory"):
+        kind = "dir"
+    elif opts.get("multiple"):
+        kind = "files"
+    else:
+        kind = "file"
+    inv.return_value(GLib.Variant("(o)", (handle,)))
+    if busy[0]:
+        GLib.timeout_add(50, cancel_now, conn, handle)
+        return
+    busy[0] = True
+    rid = str(int(time.time() * 1000))
+    remove(RES)
+    write_request(rid, kind, name)
+    GLib.timeout_add(150, poll, conn, handle, rid, time.time() + WAIT_SECONDS)
+
+
+def on_get(conn, sender, path, iface, prop):
+    if prop == "version":
+        return GLib.Variant("u", 4)
+    return None
+
+
+conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+info = Gio.DBusNodeInfo.new_for_xml(XML).interfaces[0]
+conn.register_object(BASE, info, on_call, on_get, None)
+Gio.bus_own_name_on_connection(conn, "org.freedesktop.portal.Desktop", Gio.BusNameOwnerFlags.NONE, None, None)
+GLib.MainLoop().run()
+PYPORTAL
+    python3 /root/.cache/vsc-portal.py >/tmp/vsc-portal.log 2>&1 &
+    for launcher in /usr/libexec/at-spi-bus-launcher /usr/lib/at-spi2-core/at-spi-bus-launcher; do
+        if [ -x "$launcher" ]; then
+            "$launcher" --launch-immediately >/tmp/atspi.log 2>&1 &
+            break
+        fi
+    done
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25; do
+        dbus-send --session --print-reply --dest=org.a11y.Bus /org/a11y/bus org.a11y.Bus.GetAddress >/dev/null 2>&1 && break
+        sleep 0.2
+    done
     for prop in IsEnabled ScreenReaderEnabled; do
         dbus-send --session --dest=org.a11y.Bus --type=method_call /org/a11y/bus \
             org.freedesktop.DBus.Properties.Set string:org.a11y.Status string:$prop variant:boolean:true >/dev/null 2>&1
     done
-    mkdir -p /root/.cache
-    cat > /root/.cache/vsc-ime-bridge.py <<PYBRIDGE
-import os, sys
+    cat > /root/.cache/vsc-ime-bridge.py <<\PYBRIDGE
+import os, sys, threading
 try:
     import pyatspi
-except Exception:
+except Exception as e:
+    print("no pyatspi: " + str(e))
     sys.exit(0)
 OUT = "/tmp/.X11-unix/vsc-ime"
 seq = [0]
@@ -154,6 +303,7 @@ def emit(show):
     with open(tmp, "w") as f:
         f.write(("1" if show else "0") + " " + str(seq[0]))
     os.replace(tmp, OUT)
+    print("keyboard " + ("show" if show else "hide"), flush=True)
 def editable(acc):
     try:
         if acc.getState().contains(pyatspi.STATE_EDITABLE):
@@ -169,19 +319,24 @@ def on_caret(ev):
         emit(True)
 pyatspi.Registry.registerEventListener(on_focus, "object:state-changed:focused")
 pyatspi.Registry.registerEventListener(on_caret, "object:text-caret-moved")
+print("watching focus", flush=True)
 pyatspi.Registry.start()
 PYBRIDGE
     python3 /root/.cache/vsc-ime-bridge.py >/tmp/vsc-ime.log 2>&1 &
+else
+    unset DBUS_SESSION_BUS_ADDRESS
+    echo "no session bus: keyboard follow-focus and the Android picker are off" >/tmp/vsc-portal.log
 fi
 # The pointer is not drawn: the screen is touched directly.
 if command -v unclutter >/dev/null 2>&1; then
     unclutter --timeout 1 >/tmp/unclutter.log 2>&1 &
 fi
-# Open Folder, Open File and Save use the system file dialog (it has Cancel, and Back sends
-# Escape), starting in the workspace, with the phone storage one click away. Done once, so a
-# later choice in the editor settings is kept.
-mkdir -p /root/.config/gtk-3.0
+# Fallback only: if the editor does not use the Android picker, its own Linux file dialog still
+# shows hidden folders (the workspace one is hidden) and has the workspace and the phone storage
+# one tap away.
+mkdir -p /root/.config/gtk-3.0 /root/.config/glib-2.0/settings
 printf "file://%s Workspace\nfile:///storage/emulated/0 Phone storage\n" "$WORKSPACE" > /root/.config/gtk-3.0/bookmarks
+printf "[org/gtk/settings/file-chooser]\nshow-hidden=true\n" > /root/.config/glib-2.0/settings/keyfile
 openbox >/tmp/openbox.log 2>&1 &
 # The editor (work package WP4). Plain VSCodium, started the way a PC desktop would
 # start it, with the flags Electron needs inside proot and nothing else: no heap or
@@ -217,8 +372,8 @@ fi
 sleep 1
 # The editor draws at the phone density, as the device would on its own screen.
 DENSITY=${DENSITY:-1.00}
-export GIO_USE_VFS=local GTK_USE_PORTAL=0 ELECTRON_ENABLE_LOGGING=1 NO_AT_BRIDGE=0
-COMMON="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --ozone-platform=x11 --password-store=basic --force-device-scale-factor=$DENSITY"
+export GIO_USE_VFS=local GSETTINGS_BACKEND=keyfile GTK_USE_PORTAL=0 ELECTRON_ENABLE_LOGGING=1 NO_AT_BRIDGE=0
+COMMON="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --ozone-platform=x11 --password-store=basic --force-renderer-accessibility --force-device-scale-factor=$DENSITY"
 # Electron inside proot can lose its renderer ("crashed", code 5) depending on how the graphics
 # and process model are set up, which differs between devices. Three launch variants are tried
 # in turn when the editor reports a crashed renderer; the one that works is remembered.
