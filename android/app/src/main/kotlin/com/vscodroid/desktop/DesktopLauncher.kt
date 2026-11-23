@@ -101,6 +101,12 @@ class DesktopLauncher(
     /** Ends the session the app holds, then anything of this tree that is left. */
     fun stop(): Int {
         session?.let { p ->
+            if (p.isAlive && File(rootfs, "tmp/$READY_MARKER").exists()) {
+                // The editor is asked to quit first (the Debian side closes its windows), so that
+                // its open folder and tabs are saved and come back next time.
+                runCatching { File(rootfs, "tmp/.X11-unix/$QUIT_REQUEST").writeText("1") }
+                p.waitFor(QUIT_GRACE_SECONDS, TimeUnit.SECONDS)
+            }
             p.destroy()
             if (!p.waitFor(STOP_GRACE_SECONDS, TimeUnit.SECONDS)) p.destroyForcibly()
         }
@@ -156,6 +162,9 @@ class DesktopLauncher(
         val tmp = File(rootfs, "tmp").apply { mkdirs() }
         File(tmp, ".X11-unix").mkdirs()
         for (leftover in listOf(".X0-lock", ".X11-unix/X0", READY_MARKER)) File(tmp, leftover).delete()
+        // Bridge files and the private session bus of a run that was cut short would confuse the next one.
+        File(tmp, ".X11-unix").listFiles { f -> f.name.startsWith("vsc-") }?.forEach { it.delete() }
+        File(tmp, "vsc-session-bus").delete()
         x11LogFile.parentFile?.mkdirs()
         val appProcess = listOf("/system/bin/app_process64", "/system/bin/app_process").firstOrNull { File(it).exists() }
             ?: return "app_process was not found"
@@ -186,6 +195,9 @@ class DesktopLauncher(
         }
         return "the display server did not open its socket in ${X_READY_TIMEOUT_SECONDS}s: ${x11LogTail()}"
     }
+
+    /** The ends of the logs of the session and the display server, for a failure message. */
+    fun failureTail(): String = "${logTail()} | ${guestLogTail()} | x11: ${x11LogTail()}"
 
     /** Null when the display answered inside the guest, otherwise why not. */
     private fun launch(plan: DesktopStorage.Plan, noSeccomp: Boolean): String? {
@@ -308,6 +320,9 @@ class DesktopLauncher(
         private const val X_READY_TIMEOUT_SECONDS = 30L
         private const val READY_TIMEOUT_SECONDS = 90L
         private const val STOP_GRACE_SECONDS = 5L
+        private const val QUIT_GRACE_SECONDS = 8L
+        /** File in the X server folder that asks the editor to quit (read by wrapper.sh). */
+        private const val QUIT_REQUEST = "vsc-quit"
         private const val INSTALL_TIMEOUT_SECONDS = 3600L
         private const val REPAIR_TIMEOUT_SECONDS = 1800L
         private const val POLL_MS = 500L

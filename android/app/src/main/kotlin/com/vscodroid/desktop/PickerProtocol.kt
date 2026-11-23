@@ -12,7 +12,7 @@ import java.io.File
  *
  *     vsc-pick-req    <id> NEWLINE <kind> NEWLINE <suggested name> NEWLINE
  *
- * [DesktopPickerActivity] opens Android's own picker for it and writes the answer:
+ * the Desktop screen (patched Termux:X11 MainActivity, vscStartPicker) opens Android's own picker for it and writes the answer:
  *
  *     vsc-pick-res    <id> NEWLINE <path> NEWLINE <path> NEWLINE ...
  *

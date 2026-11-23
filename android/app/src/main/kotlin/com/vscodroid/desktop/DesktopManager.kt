@@ -35,6 +35,7 @@ object DesktopManager {
     private const val PREFS = "desktop_mode"
     private const val KEY_STATE = "state"
     private const val TAG = "DesktopManager"
+    private const val QUICK_END_MS = 30_000L
 
     private val listeners = CopyOnWriteArrayList<Listener>()
     private val main = Handler(Looper.getMainLooper())
@@ -54,6 +55,9 @@ object DesktopManager {
         private set
 
     @Volatile private var cancelRequested = false
+
+    /** When the running session started; a session that ends soon after is a failure to report. */
+    @Volatile private var startedAt = 0L
 
     /** True after a session ended on its own, until the next start. */
     @Volatile var sessionEnded = false
@@ -189,6 +193,7 @@ object DesktopManager {
         launcher = l
         when (val r = l.start()) {
             is DesktopLauncher.StartResult.Running -> {
+                startedAt = android.os.SystemClock.elapsedRealtime()
                 move(DesktopState.Running)
                 watch(l.process())
                 watch(l.xServerProcess())
@@ -264,10 +269,17 @@ object DesktopManager {
                 (current?.process() === process || current?.xServerProcess() === process)
             ) {
                 Logger.w(TAG, "The desktop session ended; stopping what is left of it")
+                val quick = android.os.SystemClock.elapsedRealtime() - startedAt < QUICK_END_MS
+                val tail = if (quick) runCatching { current?.failureTail() }.getOrNull().orEmpty() else ""
                 sessionEnded = true
                 move(DesktopState.Stopping)
                 runCatching { current?.stop() }
-                move(DesktopState.Ready)
+                if (quick) {
+                    // It never really ran: say why, instead of closing the picture with no word.
+                    fail(Failure(FailureKind.Other, "The desktop closed right after starting. $tail".take(600)))
+                } else {
+                    move(DesktopState.Ready)
+                }
                 notifyListeners()
             }
         }, "desktop-watch").apply { isDaemon = true }.start()

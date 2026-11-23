@@ -235,15 +235,6 @@
             tools:replace="android:exported">
             <intent-filter tools:node="removeAll" />
         </activity>
-        <!-- Opens Android's own folder/file picker for the editor's Open Folder, Open File and Save
-             dialogs in Desktop Mode (see PickerProtocol). No screen of its own. -->
-        <activity
-            android:name=".desktop.DesktopPickerActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:taskAffinity=""
-            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <service android:name="com.termux.x11.utils.KeyInterceptor" tools:node="remove" />
         <receiver
             android:name="com.termux.x11.LoriePreferences$Receiver"

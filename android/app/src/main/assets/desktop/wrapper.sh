@@ -136,7 +136,7 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/vsc-session-bus
 rm -f /tmp/vsc-session-bus /tmp/.X11-unix/vsc-ime /tmp/.X11-unix/vsc-ime.tmp \
     /tmp/.X11-unix/vsc-pick-req /tmp/.X11-unix/vsc-pick-req.tmp \
     /tmp/.X11-unix/vsc-pick-res /tmp/.X11-unix/vsc-pick-res.tmp \
-    /tmp/.X11-unix/vsc-back /tmp/.X11-unix/vsc-back.tmp
+    /tmp/.X11-unix/vsc-back /tmp/.X11-unix/vsc-back.tmp /tmp/.X11-unix/vsc-quit
 mkdir -p /root/.cache
 if command -v dbus-daemon >/dev/null 2>&1 && \
         dbus-daemon --session --fork --nopidfile --address="$DBUS_SESSION_BUS_ADDRESS" >/tmp/dbus.log 2>&1; then
@@ -205,6 +205,17 @@ def read_answer(rid):
     return [l for l in lines[1:] if l]
 
 
+def remember_folder(path):
+    """The last folder chosen, so the editor can open it again next time."""
+    try:
+        target = "/root/.config/VSCodium/.vsc-last-folder"
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w") as f:
+            f.write(path)
+    except OSError:
+        pass
+
+
 def respond(conn, handle, paths):
     if paths:
         results = {"uris": GLib.Variant("as", ["file://" + urllib.parse.quote(p) for p in paths])}
@@ -216,13 +227,15 @@ def respond(conn, handle, paths):
                      GLib.Variant("(ua{sv})", (code, results)))
 
 
-def poll(conn, handle, rid, deadline):
+def poll(conn, handle, rid, deadline, kind):
     paths = read_answer(rid)
     if paths is None and time.time() < deadline:
         return True
     remove(REQ)
     remove(RES)
     busy[0] = False
+    if kind == "dir" and paths:
+        remember_folder(paths[0])
     respond(conn, handle, paths or [])
     return False
 
@@ -258,7 +271,7 @@ def on_call(conn, sender, path, iface, method, params, inv):
     rid = str(int(time.time() * 1000))
     remove(RES)
     write_request(rid, kind, name)
-    GLib.timeout_add(150, poll, conn, handle, rid, time.time() + WAIT_SECONDS)
+    GLib.timeout_add(150, poll, conn, handle, rid, time.time() + WAIT_SECONDS, kind)
 
 
 def on_get(conn, sender, path, iface, prop):
@@ -339,6 +352,7 @@ import ctypes, ctypes.util, os, time
 # window opened on top of it), it is asked to close the way a window manager does, with
 # WM_DELETE_WINDOW. The editor window is the first one the window manager lists.
 FILE = os.environ.get("VSC_BACK_FILE", "/tmp/.X11-unix/vsc-back")
+QUIT = os.environ.get("VSC_QUIT_FILE", "/tmp/.X11-unix/vsc-quit")
 x11 = ctypes.CDLL(ctypes.util.find_library("X11") or "libX11.so.6")
 x11.XOpenDisplay.restype = ctypes.c_void_p
 x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
@@ -348,6 +362,8 @@ x11.XInternAtom.restype = ctypes.c_ulong
 x11.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
 x11.XFree.argtypes = [ctypes.c_void_p]
 x11.XFlush.argtypes = [ctypes.c_void_p]
+x11.XSetWindowBackground.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong]
+x11.XClearWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
 x11.XSendEvent.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.c_long, ctypes.c_void_p]
 x11.XGetWindowProperty.argtypes = [
     ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_long, ctypes.c_long, ctypes.c_int,
@@ -396,7 +412,40 @@ def close_top_window(dpy):
     event.data[0] = x11.XInternAtom(dpy, b"WM_DELETE_WINDOW", 0)
     x11.XSendEvent(dpy, active[0], 0, 0, ctypes.byref(event))
     x11.XFlush(dpy)
+    # Focus goes back to the editor window (the window manager would pick some other window).
+    time.sleep(0.3)
+    if listed[0] in windows_of(dpy, root, b"_NET_CLIENT_LIST"):
+        focus = ClientMessage()
+        focus.type = 33
+        focus.window = listed[0]
+        focus.message_type = x11.XInternAtom(dpy, b"_NET_ACTIVE_WINDOW", 0)
+        focus.format = 32
+        focus.data[0] = 1  # asked by an application
+        x11.XSendEvent(dpy, root, 0, (1 << 20) | (1 << 19), ctypes.byref(focus))
+        x11.XFlush(dpy)
     return True
+
+
+def close_all(dpy):
+    """Asks every window to close, as when the person quits (the editor saves its state first)."""
+    root = x11.XDefaultRootWindow(dpy)
+    for window in windows_of(dpy, root, b"_NET_CLIENT_LIST"):
+        event = ClientMessage()
+        event.type = 33
+        event.window = window
+        event.message_type = x11.XInternAtom(dpy, b"WM_PROTOCOLS", 0)
+        event.format = 32
+        event.data[0] = x11.XInternAtom(dpy, b"WM_DELETE_WINDOW", 0)
+        x11.XSendEvent(dpy, window, 0, 0, ctypes.byref(event))
+    x11.XFlush(dpy)
+
+
+def paint_background(dpy):
+    """The root window in the editor colour, so that nothing white shows while it redraws."""
+    root = x11.XDefaultRootWindow(dpy)
+    x11.XSetWindowBackground(dpy, root, 0x1E1E1E)
+    x11.XClearWindow(dpy, root)
+    x11.XFlush(dpy)
 
 
 def read_ping():
@@ -412,8 +461,16 @@ def main():
     if not dpy:
         print("no display")
         return
+    paint_background(dpy)
     last = read_ping()
     while True:
+        if os.path.exists(QUIT):
+            try:
+                os.remove(QUIT)
+            except OSError:
+                pass
+            close_all(dpy)
+            print("quit: windows asked to close", flush=True)
         now = read_ping()
         if now and now != last:
             last = now
@@ -477,6 +534,68 @@ COMMON="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --ozone-pl
 # Electron inside proot can lose its renderer ("crashed", code 5) depending on how the graphics
 # and process model are set up, which differs between devices. Three launch variants are tried
 # in turn when the editor reports a crashed renderer; the one that works is remembered.
+# The extensions folder is shared with the other editor, whose own bundled extensions (named
+# vscodroid.*) talk to that editor and would, for example, send Open Folder to it. They are
+# switched off here by name (the folder name without its version).
+DISABLE_BUNDLED=""
+for d in /root/.vscode-oss/extensions/vscodroid.*; do
+    [ -d "$d" ] || continue
+    id=$(basename "$d" | sed -E "s/-[0-9][0-9.]*(-[a-z0-9-]+)?$//")
+    DISABLE_BUNDLED="$DISABLE_BUNDLED --disable-extension=$id"
+done
+# Second switch for the same thing: the editor keeps its own list of switched-off extensions.
+if command -v python3 >/dev/null 2>&1; then
+python3 - $DISABLE_BUNDLED <<\PYDIS >/tmp/codium.disable.log 2>&1
+import json, sqlite3, sys
+db = "/root/.config/VSCodium/User/globalStorage/state.vscdb"
+ids = [a.split("=", 1)[1] for a in sys.argv[1:] if "=" in a]
+try:
+    con = sqlite3.connect(db)
+    row = con.execute("select value from ItemTable where key=?", ("extensionsIdentifiers/disabled",)).fetchone()
+    have = json.loads(row[0]) if row else []
+    names = {e.get("id", "").lower() for e in have}
+    for i in ids:
+        if i.lower() not in names:
+            have.append({"id": i})
+    con.execute("insert or replace into ItemTable(key, value) values(?, ?)", ("extensionsIdentifiers/disabled", json.dumps(have)))
+    con.commit()
+    print("disabled", ids)
+except Exception as e:
+    print("skipped:", e)
+PYDIS
+fi
+# What the editor opens: the folder and files it had when it was closed last time (it restores them
+# itself when no folder is given), else the last folder chosen in the Open Folder dialog, else the
+# public workspace on the first run or when that folder is gone.
+START=""
+LASTDIR=""
+STORAGE=/root/.config/VSCodium/User/globalStorage/storage.json
+if [ -r "$STORAGE" ] && command -v python3 >/dev/null 2>&1; then
+    LASTDIR=$(python3 - "$STORAGE" <<\PYLAST 2>/dev/null
+import json, sys, urllib.parse
+try:
+    state = json.load(open(sys.argv[1])).get("windowsState", {})
+    win = state.get("lastActiveWindow") or {}
+    uri = win.get("folder") or ""
+    if uri.startswith("file://"):
+        print(urllib.parse.unquote(uri[7:]))
+    elif not uri and (win.get("backupPath") or state.get("openedWindows")):
+        print("-")
+except Exception:
+    pass
+PYLAST
+)
+fi
+if [ "$LASTDIR" = "-" ]; then
+    START=""
+elif [ -n "$LASTDIR" ] && [ -d "$LASTDIR" ]; then
+    START=""
+elif [ -r /root/.config/VSCodium/.vsc-last-folder ] && [ -d "$(cat /root/.config/VSCodium/.vsc-last-folder)" ]; then
+    START="$(cat /root/.config/VSCodium/.vsc-last-folder)"
+else
+    START="$WORKSPACE"
+fi
+echo "start: [$START] last: [$LASTDIR] disabled:$DISABLE_BUNDLED" > /tmp/codium.start.log
 variant_flags() {
     case "$1" in
         1) echo "--disable-gpu" ;;
@@ -492,8 +611,8 @@ tries=0
 while :; do
     rm -rf /root/.config/VSCodium/logs
     /usr/share/codium/codium $COMMON $(variant_flags "$v") \
-        --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions \
-        "$WORKSPACE" >/tmp/codium.log 2>&1 &
+        --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions $DISABLE_BUNDLED \
+        $START >/tmp/codium.log 2>&1 &
     cpid=$!
     echo "variant $v started" >> /tmp/codium.log
     crashed=0

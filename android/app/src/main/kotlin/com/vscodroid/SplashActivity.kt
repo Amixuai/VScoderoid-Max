@@ -1077,11 +1077,6 @@ class SplashActivity : AppCompatActivity() {
         val gone = isFinishing || isDestroyed
         if (gone) {
             Logger.i(tag, "The splash screen is gone; not launching the editor behind the user")
-        } else if (desktopIsRunning()) {
-            // The desktop is still running (the app was only minimized): go back to it, not to the
-            // editor, which would look like the work was lost.
-            Logger.i(tag, "Desktop Mode is running; returning to it")
-            startActivity(Intent(this, DesktopActivity::class.java))
         } else {
             startActivity(Intent(this, MainActivity::class.java).apply {
                 data = intent?.data
@@ -1106,13 +1101,6 @@ class SplashActivity : AppCompatActivity() {
         publishToolchainShortcut()
         startDesktopSetup()
         if (!gone) finish()
-    }
-
-    private fun desktopIsRunning(): Boolean = try {
-        DesktopManager.attach(applicationContext)
-        DesktopManager.state == DesktopState.Running
-    } catch (e: Exception) {
-        false
     }
 
     /**

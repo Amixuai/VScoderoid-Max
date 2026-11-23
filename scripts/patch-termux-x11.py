@@ -84,7 +84,7 @@ edit(
 #    - vsc-ime: "1 <n>" when an editable field takes focus (or is tapped again) and "0 <n>" when
 #      anything else does; the keyboard is shown or hidden to match.
 #    - vsc-pick-req: a request from the editor's Open Folder / Open File / Save dialog; the
-#      Android system picker is opened for it (DesktopPickerActivity), and its answer goes back
+#      Android system picker is opened from this screen for it, and its answer goes back
 #      through vsc-pick-res.
 #    Both are read by polling: the files are tiny and the folder may not exist yet. What is
 #    already in a file when this screen starts is old news and is not acted on.
@@ -148,11 +148,109 @@ edit(
         }
     }
 
+    private static final int VSC_PICK = 7311;
+    private String vscPickId = "";
+    private String vscPickKind = "";
+
+    // The editor's Open Folder / Open File / Save dialogs: Android's own picker is opened from
+    // this screen, so the person comes back to this screen. Mirrored by PickerProtocol (tested).
     private void vscStartPicker(String request) {
+        String[] lines = request.split("\\n", -1);
+        vscPickId = lines[0].trim();
+        vscPickKind = lines.length > 1 ? lines[1].trim() : "";
+        String name = lines.length > 2 ? lines[2].trim() : "";
+        if (vscPickId.isEmpty())
+            return;
         try {
-            startActivity(new android.content.Intent()
-                    .setClassName(getPackageName(), "com.vscodroid.desktop.DesktopPickerActivity")
-                    .putExtra("request", request));
+            android.content.Intent intent;
+            if (vscPickKind.equals("dir")) {
+                intent = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE);
+            } else if (vscPickKind.equals("file") || vscPickKind.equals("files")) {
+                intent = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT)
+                        .addCategory(android.content.Intent.CATEGORY_OPENABLE).setType("*/*")
+                        .putExtra(android.content.Intent.EXTRA_ALLOW_MULTIPLE, vscPickKind.equals("files"));
+            } else if (vscPickKind.equals("save")) {
+                intent = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT)
+                        .addCategory(android.content.Intent.CATEGORY_OPENABLE).setType("application/octet-stream")
+                        .putExtra(android.content.Intent.EXTRA_TITLE, name.isEmpty() ? "untitled" : name);
+            } else {
+                vscAnswerPick(new java.util.ArrayList<String>());
+                return;
+            }
+            intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,
+                    android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:.VScoderoid-Pro"));
+            startActivityForResult(intent, VSC_PICK);
+        } catch (Throwable e) {
+            vscAnswerPick(new java.util.ArrayList<String>());
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != VSC_PICK)
+            return;
+        java.util.ArrayList<String> paths = new java.util.ArrayList<>();
+        if (resultCode == RESULT_OK && data != null) {
+            java.util.ArrayList<android.net.Uri> uris = new java.util.ArrayList<>();
+            if (data.getClipData() != null)
+                for (int i = 0; i < data.getClipData().getItemCount(); i++)
+                    uris.add(data.getClipData().getItemAt(i).getUri());
+            if (data.getData() != null && !uris.contains(data.getData()))
+                uris.add(data.getData());
+            boolean folder = vscPickKind.equals("dir");
+            for (android.net.Uri uri : uris) {
+                try {
+                    String docId = folder ? android.provider.DocumentsContract.getTreeDocumentId(uri)
+                            : android.provider.DocumentsContract.getDocumentId(uri);
+                    String path = vscPathFor(uri.getAuthority(), docId);
+                    if (path == null)
+                        continue;
+                    java.io.File f = new java.io.File(path);
+                    if (folder ? f.isDirectory() : f.exists())
+                        paths.add(path);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        vscAnswerPick(paths);
+    }
+
+    private static String vscPathFor(String authority, String docId) {
+        if ("com.android.externalstorage.documents".equals(authority)) {
+            int colon = docId.indexOf(':');
+            if (colon <= 0)
+                return null;
+            String volume = docId.substring(0, colon);
+            String rel = docId.substring(colon + 1);
+            for (String part : rel.split("/"))
+                if (part.equals(".."))
+                    return null;
+            String base = volume.equals("primary") ? "/storage/emulated/0"
+                    : volume.equals("home") ? "/storage/emulated/0/Documents" : "/storage/" + volume;
+            return rel.isEmpty() ? base : base + "/" + rel;
+        }
+        if ("com.android.providers.downloads.documents".equals(authority) && docId.startsWith("raw:/")) {
+            String path = docId.substring(4);
+            for (String part : path.split("/"))
+                if (part.equals(".."))
+                    return null;
+            return path;
+        }
+        return null;
+    }
+
+    private void vscAnswerPick(java.util.List<String> paths) {
+        try {
+            java.io.File dir = new java.io.File(getFilesDir(), "debian_rootfs/tmp/.X11-unix");
+            StringBuilder text = new StringBuilder(vscPickId).append('\\n');
+            for (String path : paths)
+                text.append(path).append('\\n');
+            java.io.File tmp = new java.io.File(dir, "vsc-pick-res.tmp");
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                out.write(text.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            tmp.renameTo(new java.io.File(dir, "vsc-pick-res"));
         } catch (Throwable ignored) {
         }
     }
@@ -318,5 +416,42 @@ edit(
     "        cursorView.setVisibility(show ? android.view.View.VISIBLE : android.view.View.INVISIBLE);\n"
     "    }\n\n"
     "    @FastNative private native boolean sendKeyEvent(long ptr, int scanCode, int keyCode, boolean keyDown);",
+)
+
+# 10. Keyboard bar: taller, as comfortable to hit as the other editor's. The picture is covered by the
+#     editor's dark colour for a moment while the keyboard changes the size of the screen, so the
+#     white the editor paints while it redraws is never seen.
+edit(main, "layoutParams.height = Math.round(37.5f * getResources().getDisplayMetrics().density *",
+     "layoutParams.height = Math.round(72f * getResources().getDisplayMetrics().density *")
+edit("lorie/src/main/res/layout/main_activity.xml", 'android:layout_height="37.5dp"', 'android:layout_height="72dp"')
+edit(main, "        imeHeight = height;\n        setTerminalToolbarView();",
+     "        imeHeight = height;\n        vscCoverBriefly();\n        setTerminalToolbarView();")
+edit(
+    main,
+    "    /** Tells the Debian side that Back was pressed",
+    """    private android.view.View vscCover;
+    private final Runnable vscUncover = () -> {
+        if (vscCover != null && vscCover.getParent() instanceof android.view.ViewGroup)
+            ((android.view.ViewGroup) vscCover.getParent()).removeView(vscCover);
+    };
+
+    /** The editor's dark colour over the picture for a moment (see patch 10). */
+    private void vscCoverBriefly() {
+        try {
+            if (vscCover == null) {
+                vscCover = new android.view.View(this);
+                vscCover.setBackgroundColor(0xFF1E1E1E);
+            }
+            if (vscCover.getParent() == null)
+                frm.addView(vscCover, frm.indexOfChild(getLorieView()) + 1,
+                        new android.widget.FrameLayout.LayoutParams(-1, -1));
+            getTerminalToolbarViewPager().bringToFront();
+            handler.removeCallbacks(vscUncover);
+            handler.postDelayed(vscUncover, 450);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Tells the Debian side that Back was pressed""",
 )
 print("patch-termux-x11: all edits applied")
