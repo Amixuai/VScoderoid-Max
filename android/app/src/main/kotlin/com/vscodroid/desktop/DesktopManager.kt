@@ -183,7 +183,6 @@ object DesktopManager {
             return
         }
         stopOtherEditor(app)
-        shareExtensions(app)
         move(DesktopState.Ready)
         move(DesktopState.Starting)
         val l = DesktopLauncher.create(app)
@@ -211,17 +210,6 @@ object DesktopManager {
                     .setAction("com.vscodroid.action.STOP_SERVER"),
             )
         }.onFailure { Logger.w(TAG, "Could not ask the other editor to stop: ${it.message}") }
-    }
-
-    /** One extensions folder in the workspace: brings over, once, what the other editor installed. */
-    private fun shareExtensions(app: Context) {
-        runCatching {
-            val copied = ExtensionsShare.importOnce(
-                source = java.io.File(app.filesDir, "home/.vscodroid/extensions"),
-                target = ExtensionsShare.sharedDir(PublicWorkspace.root()),
-            )
-            if (copied > 0) Logger.i(TAG, "Brought $copied extensions into the shared folder")
-        }.onFailure { Logger.w(TAG, "Could not share extensions: ${it.message}") }
     }
 
     /** Unpacks the system when it is not there yet. False when it did not end ready (the state says why). */

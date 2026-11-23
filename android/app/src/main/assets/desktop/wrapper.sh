@@ -439,14 +439,9 @@ openbox >/tmp/openbox.log 2>&1 &
 # The editor (work package WP4). Plain VSCodium, started the way a PC desktop would
 # start it, with the flags Electron needs inside proot and nothing else: no heap or
 # memory flags (Master Blueprint section 2 is not implemented).
-mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions "$WORKSPACE/.extensions"
-# One extensions folder for everything, in the workspace, so that it survives and is shared. What
-# the editor installed before this folder existed is moved over once (an entry that is already
-# there is kept; copies in shared storage carry no permissions or links, so a failed one is skipped).
-for old in /root/.vscode-oss/extensions/*; do
-    [ -e "$old" ] || continue
-    [ -e "$WORKSPACE/.extensions/$(basename "$old")" ] || cp -r --no-preserve=mode,ownership "$old" "$WORKSPACE/.extensions/" 2>/dev/null || true
-done
+# The extensions folder is the private folder of the app, bound in by the app (shared with the other editor):
+# private storage keeps the execute permission and the links that extensions with programs need.
+mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions
 if [ ! -e /root/.config/VSCodium/User/settings.json ]; then
 cat > /root/.config/VSCodium/User/settings.json <<JSON
 {
@@ -497,7 +492,7 @@ tries=0
 while :; do
     rm -rf /root/.config/VSCodium/logs
     /usr/share/codium/codium $COMMON $(variant_flags "$v") \
-        --user-data-dir=/root/.config/VSCodium --extensions-dir="$WORKSPACE/.extensions" \
+        --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions \
         "$WORKSPACE" >/tmp/codium.log 2>&1 &
     cpid=$!
     echo "variant $v started" >> /tmp/codium.log

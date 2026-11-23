@@ -66,6 +66,15 @@ class DesktopStorageTest {
     }
 
     @Test
+    fun extensionsAreOnePrivateFolderSharedWithTheOtherEditor() {
+        val (s, _, engine) = storage()
+        s.ensurePrivateTree()
+        val bind = s.plan().binds.single { it.guest == DesktopStorage.GUEST_EXTENSIONS }
+        assertEquals(File(engine, "home/.vscodroid/extensions"), bind.host)
+        assertTrue(bind.host.isDirectory)
+    }
+
+    @Test
     fun deletingAProjectRemovesItsPrivateData() {
         val (s, pub, engine) = storage()
         File(pub, "app").mkdirs(); File(pub, "app/package.json").writeText("{}")

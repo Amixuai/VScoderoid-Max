@@ -60,6 +60,8 @@ class DesktopStorage(
             GuestFs.ensureDirs(rootfsDir, GuestFs.parts(guest), chmod, verified)
         }
         GuestFs.ensureDirs(rootfsDir, GuestFs.parts(GUEST_WORKSPACE), chmod, verified)
+        extensionsHost.mkdirs()
+        GuestFs.ensureDirs(rootfsDir, GuestFs.parts(GUEST_EXTENSIONS), chmod, verified)
         for (guest in listOf(GUEST_STORAGE, GUEST_SDCARD)) {
             GuestFs.ensureDirs(rootfsDir, GuestFs.parts(guest), chmod, verified)
         }
@@ -77,6 +79,16 @@ class DesktopStorage(
         val nomedia = File(publicRoot, ".nomedia")
         if (!nomedia.exists()) nomedia.createNewFile()
     }
+
+    /**
+     * The editor's extensions folder: the app's one private folder (the same one the app's other
+     * editor uses), so an extension is installed once and works in both. It is private storage on
+     * purpose: shared storage has no execute permission and no links, which extensions that ship
+     * programs need. When the other editor is removed the folder stays, as part of the app's data.
+     */
+    fun extensionsBind(): Bind = Bind(extensionsHost, GUEST_EXTENSIONS)
+
+    private val extensionsHost = File(privateRoot, "home/.vscodroid/extensions")
 
     /** The global installs, each in private storage and bound to the place the tool uses in the guest. */
     fun globalBinds(): List<Bind> = GLOBALS.map { (name, guest) -> Bind(File(globalDir, name), guest) }
@@ -105,6 +117,7 @@ class DesktopStorage(
             binds += Bind(dir, shared)
         }
         binds += globalBinds()
+        binds += extensionsBind()
         val projects = publicRoot.listFiles { f -> f.isDirectory && !java.nio.file.Files.isSymbolicLink(f.toPath()) }
             ?.sortedBy { it.name }.orEmpty()
         for (project in projects) {
@@ -164,6 +177,9 @@ class DesktopStorage(
 
         /** The public workspace, at its real path, so the editor opens it and dialogs start there. */
         const val GUEST_WORKSPACE = "/storage/emulated/0/.VScoderoid-Pro"
+
+        /** Where the editor in the Debian system keeps its extensions (wrapper.sh passes this path). */
+        const val GUEST_EXTENSIONS = "/root/.vscode-oss/extensions"
         private val SHARED_STORAGE = listOf("/storage/emulated/0", "/sdcard")
         private const val PROJECT_FILE = ".project"
 

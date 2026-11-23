@@ -111,6 +111,30 @@ edit(
         }
     }
 
+    // The pointer is drawn only while a mouse is in use: a mouse event shows it, a finger or pen hides it.
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        vscPointerFor(ev);
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    public boolean dispatchGenericMotionEvent(android.view.MotionEvent ev) {
+        vscPointerFor(ev);
+        return super.dispatchGenericMotionEvent(ev);
+    }
+
+    private void vscPointerFor(android.view.MotionEvent ev) {
+        try {
+            int tool = ev.getToolType(0);
+            if (tool == android.view.MotionEvent.TOOL_TYPE_MOUSE)
+                getLorieView().vscShowPointer(true);
+            else if (tool == android.view.MotionEvent.TOOL_TYPE_FINGER || tool == android.view.MotionEvent.TOOL_TYPE_STYLUS)
+                getLorieView().vscShowPointer(false);
+        } catch (Throwable ignored) {
+        }
+    }
+
     /** Tells the Debian side that Back was pressed (it closes a window opened on top of the editor). */
     public void vscBack() {
         try {
@@ -267,8 +291,8 @@ edit(
 
 # 9. No white flash and no pointer flash when the screen comes back: the picture area and the
 #    "not connected" cover are the editor's own dark colour (the window behind them is set by
-#    the app's theme for this screen), and the pointer layer is not shown at all, because the
-#    screen is touched directly.
+#    the app's theme for this screen), and the pointer layer is shown only while a mouse is in
+#    use (a finger hides it again).
 layout = "lorie/src/main/res/layout/main_activity.xml"
 dark = "#FF1E1E1E"
 edit(layout, '    android:layout_height="match_parent"\n    android:background="@android:color/black">\n\n    <FrameLayout\n        android:id="@+id/frame"',
@@ -281,5 +305,18 @@ edit(
     "lorie/src/main/java/com/termux/x11/LorieView.java",
     "        addView(cursorView, new LayoutParams(32, 32));",
     "        addView(cursorView, new LayoutParams(32, 32));\n        cursorView.setVisibility(android.view.View.INVISIBLE);",
+)
+edit(
+    "lorie/src/main/java/com/termux/x11/LorieView.java",
+    "    @FastNative private native boolean sendKeyEvent(long ptr, int scanCode, int keyCode, boolean keyDown);",
+    "    private boolean vscPointerShown;\n\n"
+    "    /** The pointer layer is shown only while a mouse is in use (see MainActivity.vscPointerFor). */\n"
+    "    public void vscShowPointer(boolean show) {\n"
+    "        if (show == vscPointerShown)\n"
+    "            return;\n"
+    "        vscPointerShown = show;\n"
+    "        cursorView.setVisibility(show ? android.view.View.VISIBLE : android.view.View.INVISIBLE);\n"
+    "    }\n\n"
+    "    @FastNative private native boolean sendKeyEvent(long ptr, int scanCode, int keyCode, boolean keyDown);",
 )
 print("patch-termux-x11: all edits applied")
