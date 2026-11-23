@@ -111,6 +111,19 @@ edit(
         }
     }
 
+    /** Tells the Debian side that Back was pressed (it closes a window opened on top of the editor). */
+    public void vscBack() {
+        try {
+            java.io.File dir = new java.io.File(getFilesDir(), "debian_rootfs/tmp/.X11-unix");
+            java.io.File tmp = new java.io.File(dir, "vsc-back.tmp");
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                out.write(Long.toString(System.nanoTime()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            tmp.renameTo(new java.io.File(dir, "vsc-back"));
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void vscStartPicker(String request) {
         try {
             startActivity(new android.content.Intent()
@@ -183,3 +196,90 @@ text = manifest.read_text(encoding="utf-8")
 if text.count("stateHidden|adjustNothing") != 2:
     sys.exit("patch-termux-x11: expected two windowSoftInputMode entries in the lorie manifest")
 manifest.write_text(text.replace("stateHidden|adjustNothing", "stateHidden|adjustResize"), encoding="utf-8")
+
+# 7. Back: "close top window" sends Escape (closes menus and dialogs inside the editor) and tells
+#    the Debian side, which closes the focused window when it is a second one opened on top of
+#    the editor (DevTools, a live preview). The editor window itself is never closed by Back.
+edit(
+    "lorie/src/main/res/values/arrays.xml",
+    "<item>send escape</item>",
+    "<item>send escape</item>\n        <item>close top window</item>",
+)
+edit(
+    "lorie/src/main/java/com/termux/x11/input/TouchInputHandler.java",
+    'case "send escape": return (key, down) -> mActivity.getLorieView().sendKeyEvent(0, android.view.KeyEvent.KEYCODE_ESCAPE, down);',
+    'case "send escape": return (key, down) -> mActivity.getLorieView().sendKeyEvent(0, android.view.KeyEvent.KEYCODE_ESCAPE, down);\n'
+    '            case "close top window": return (key, down) -> {\n'
+    '                mActivity.getLorieView().sendKeyEvent(0, android.view.KeyEvent.KEYCODE_ESCAPE, down);\n'
+    '                if (down) mActivity.vscBack();\n'
+    '            };',
+)
+
+# 8. A swipeable extra-keys bar of its own: five pages of one row each (navigation and modifiers,
+#    brackets, symbols, F1 to F10, and the rest of the function and editing keys), then
+#    Termux:X11's text-entry page. It shows only while the soft keyboard is up, directly above it.
+ek = "lorie/src/main/java/com/termux/x11/utils/TermuxX11ExtraKeys.java"
+edit(ek, "    private ExtraKeysInfo mExtraKeysInfo;", "    private ExtraKeysInfo mExtraKeysInfo;\n    /** When set, this bar shows this layout and not the one in the preferences. */\n    public String vscConfig;")
+edit(ek, "String extrakeys = mActivity.prefs.extra_keys_config.get();", "String extrakeys = vscConfig != null ? vscConfig : mActivity.prefs.extra_keys_config.get();")
+pager = "lorie/src/main/java/com/termux/x11/utils/X11ToolbarViewPager.java"
+edit(
+    pager,
+    "        final MainActivity mActivity;\n",
+    "        final MainActivity mActivity;\n"
+    "        static final String[] VSC_PAGES = {\n"
+    "                \"[['ESC','TAB','CTRL','ALT','SHIFT','LEFT','DOWN','UP','RIGHT']]\",\n"
+    "                \"[['{','}','(',')','[',']','<','>',';',':']]\",\n"
+    "                \"[['/','|','~','`','-','_','=','+','*','&']]\",\n"
+    "                \"[['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10']]\",\n"
+    "                \"[['F11','F12','HOME','END','PGUP','PGDN','DEL','INS','ENTER']]\",\n"
+    "        };\n",
+)
+edit(pager, "            return 2;", "            return VSC_PAGES.length + 1;")
+edit(
+    pager,
+    "            if (position == 0) {\n                layout = inflater.inflate(R.layout.lorie_view_terminal_toolbar_extra_keys, collection, false);",
+    "            if (position < VSC_PAGES.length) {\n                layout = inflater.inflate(R.layout.lorie_view_terminal_toolbar_extra_keys, collection, false);",
+)
+edit(
+    pager,
+    "                mActivity.mExtraKeys = new TermuxX11ExtraKeys(mEventListener, mActivity, extraKeysView);",
+    "                TermuxX11ExtraKeys keys = new TermuxX11ExtraKeys(mEventListener, mActivity, extraKeysView);\n"
+    "                keys.vscConfig = VSC_PAGES[position];\n"
+    "                if (position == 0)\n"
+    "                    mActivity.mExtraKeys = keys;",
+)
+edit(
+    pager,
+    "            if (position == 0) {\n                act.getLorieView().requestFocus();",
+    "            if (position < PageAdapter.VSC_PAGES.length) {\n                act.getLorieView().requestFocus();",
+)
+edit(
+    main,
+    "boolean showNow = !isInPictureInPictureMode && getLorieView().connected() && prefs.showAdditionalKbd.get() && prefs.additionalKbdVisible.get();",
+    "boolean showNow = !isInPictureInPictureMode && getLorieView().connected() && prefs.showAdditionalKbd.get() && prefs.additionalKbdVisible.get() && imeHeight > 0;",
+)
+edit(main, "        imeHeight = height;\n        setTerminalToolbarViewLayout();", "        imeHeight = height;\n        setTerminalToolbarView();")
+edit(
+    main,
+    "(extraKeysInfo == null ? 0 : extraKeysInfo.getMatrix().length)",
+    "(extraKeysInfo == null ? 1 : extraKeysInfo.getMatrix().length)",
+)
+
+# 9. No white flash and no pointer flash when the screen comes back: the picture area and the
+#    "not connected" cover are the editor's own dark colour (the window behind them is set by
+#    the app's theme for this screen), and the pointer layer is not shown at all, because the
+#    screen is touched directly.
+layout = "lorie/src/main/res/layout/main_activity.xml"
+dark = "#FF1E1E1E"
+edit(layout, '    android:layout_height="match_parent"\n    android:background="@android:color/black">\n\n    <FrameLayout\n        android:id="@+id/frame"',
+     f'    android:layout_height="match_parent"\n    android:background="{dark}">\n\n    <FrameLayout\n        android:id="@+id/frame"')
+edit(layout, '        android:paddingBottom="0dp"\n        android:background="@android:color/black">',
+     f'        android:paddingBottom="0dp"\n        android:background="{dark}">')
+edit(layout, '            android:layout_height="match_parent"\n            android:background="@android:color/black"\n            android:gravity="center_horizontal|center_vertical"',
+     f'            android:layout_height="match_parent"\n            android:background="{dark}"\n            android:gravity="center_horizontal|center_vertical"')
+edit(
+    "lorie/src/main/java/com/termux/x11/LorieView.java",
+    "        addView(cursorView, new LayoutParams(32, 32));",
+    "        addView(cursorView, new LayoutParams(32, 32));\n        cursorView.setVisibility(android.view.View.INVISIBLE);",
+)
+print("patch-termux-x11: all edits applied")

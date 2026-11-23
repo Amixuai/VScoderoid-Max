@@ -182,6 +182,8 @@ object DesktopManager {
             fail(Failure(FailureKind.NeedsAllFilesAccess, ""))
             return
         }
+        stopOtherEditor(app)
+        shareExtensions(app)
         move(DesktopState.Ready)
         move(DesktopState.Starting)
         val l = DesktopLauncher.create(app)
@@ -195,6 +197,31 @@ object DesktopManager {
             DesktopLauncher.StartResult.NotProvisioned -> fail(Failure(FailureKind.Other, "the system is missing"))
             is DesktopLauncher.StartResult.Failed -> fail(Failure(FailureKind.Other, r.detail))
         }
+    }
+
+    /**
+     * The app's other editor (its own server) is not needed while the desktop runs and would only
+     * hold memory and processes the phone limits: it is stopped. Named by string so that nothing
+     * here depends on it; when it is gone the call finds nothing and does nothing.
+     */
+    private fun stopOtherEditor(app: Context) {
+        runCatching {
+            app.startService(
+                android.content.Intent().setClassName(app, "com.vscodroid.service.NodeService")
+                    .setAction("com.vscodroid.action.STOP_SERVER"),
+            )
+        }.onFailure { Logger.w(TAG, "Could not ask the other editor to stop: ${it.message}") }
+    }
+
+    /** One extensions folder in the workspace: brings over, once, what the other editor installed. */
+    private fun shareExtensions(app: Context) {
+        runCatching {
+            val copied = ExtensionsShare.importOnce(
+                source = java.io.File(app.filesDir, "home/.vscodroid/extensions"),
+                target = ExtensionsShare.sharedDir(PublicWorkspace.root()),
+            )
+            if (copied > 0) Logger.i(TAG, "Brought $copied extensions into the shared folder")
+        }.onFailure { Logger.w(TAG, "Could not share extensions: ${it.message}") }
     }
 
     /** Unpacks the system when it is not there yet. False when it did not end ready (the state says why). */

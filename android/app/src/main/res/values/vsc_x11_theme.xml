@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The editor's own dark colour, so the screen behind the desktop is never white while the
+         picture is being set up (Desktop Mode's Termux:X11 screen). -->
+    <color name="vsc_x11_background">#1E1E1E</color>
+
+    <style name="VscX11Theme" parent="LorieAppTheme">
+        <item name="android:windowBackground">@color/vsc_x11_background</item>
+    </style>
+</resources>

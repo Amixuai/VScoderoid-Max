@@ -90,6 +90,14 @@ class DesktopPickerActivity : ComponentActivity() {
                 tmp.renameTo(File(dir, PickerProtocol.RESPONSE_FILE))
             }.onFailure { Logger.w(TAG, "Could not write the picker answer: ${it.message}") }
         }
+        // The picker was opened from the desktop's screen, so the desktop is where the person
+        // goes back to; nothing else of the app is brought forward.
+        runCatching {
+            startActivity(
+                Intent().setClassName(packageName, DesktopViewer.X11_ACTIVITY)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
         finish()
     }
 

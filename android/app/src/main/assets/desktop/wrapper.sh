@@ -135,7 +135,8 @@ XML
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/vsc-session-bus
 rm -f /tmp/vsc-session-bus /tmp/.X11-unix/vsc-ime /tmp/.X11-unix/vsc-ime.tmp \
     /tmp/.X11-unix/vsc-pick-req /tmp/.X11-unix/vsc-pick-req.tmp \
-    /tmp/.X11-unix/vsc-pick-res /tmp/.X11-unix/vsc-pick-res.tmp
+    /tmp/.X11-unix/vsc-pick-res /tmp/.X11-unix/vsc-pick-res.tmp \
+    /tmp/.X11-unix/vsc-back /tmp/.X11-unix/vsc-back.tmp
 mkdir -p /root/.cache
 if command -v dbus-daemon >/dev/null 2>&1 && \
         dbus-daemon --session --fork --nopidfile --address="$DBUS_SESSION_BUS_ADDRESS" >/tmp/dbus.log 2>&1; then
@@ -327,6 +328,103 @@ else
     unset DBUS_SESSION_BUS_ADDRESS
     echo "no session bus: keyboard follow-focus and the Android picker are off" >/tmp/vsc-portal.log
 fi
+# Android Back, second half (the app sends Escape itself): when the focused window is a second one
+# on top of the editor (DevTools, a live preview), it is closed; the editor window never is.
+mkdir -p /root/.cache
+cat > /root/.cache/vsc-back.py <<\PYBACK
+import ctypes, ctypes.util, os, time
+
+# Android Back, second half. The app has already sent Escape (closes menus and dialogs inside the
+# editor). If the focused window is not the editor window itself (DevTools, a live preview, any
+# window opened on top of it), it is asked to close the way a window manager does, with
+# WM_DELETE_WINDOW. The editor window is the first one the window manager lists.
+FILE = os.environ.get("VSC_BACK_FILE", "/tmp/.X11-unix/vsc-back")
+x11 = ctypes.CDLL(ctypes.util.find_library("X11") or "libX11.so.6")
+x11.XOpenDisplay.restype = ctypes.c_void_p
+x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+x11.XDefaultRootWindow.restype = ctypes.c_ulong
+x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+x11.XInternAtom.restype = ctypes.c_ulong
+x11.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+x11.XFree.argtypes = [ctypes.c_void_p]
+x11.XFlush.argtypes = [ctypes.c_void_p]
+x11.XSendEvent.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.c_long, ctypes.c_void_p]
+x11.XGetWindowProperty.argtypes = [
+    ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_long, ctypes.c_long, ctypes.c_int,
+    ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_void_p)]
+
+
+class ClientMessage(ctypes.Structure):
+    _fields_ = [("type", ctypes.c_int), ("serial", ctypes.c_ulong), ("send_event", ctypes.c_int),
+                ("display", ctypes.c_void_p), ("window", ctypes.c_ulong), ("message_type", ctypes.c_ulong),
+                ("format", ctypes.c_int), ("data", ctypes.c_long * 5)]
+
+
+def windows_of(dpy, window, prop):
+    """The window ids stored in a root property (a list of windows)."""
+    actual = ctypes.c_ulong()
+    fmt = ctypes.c_int()
+    count = ctypes.c_ulong()
+    rest = ctypes.c_ulong()
+    data = ctypes.c_void_p()
+    if x11.XGetWindowProperty(dpy, window, x11.XInternAtom(dpy, prop, 1), 0, 4096, 0, 0,
+                              ctypes.byref(actual), ctypes.byref(fmt), ctypes.byref(count),
+                              ctypes.byref(rest), ctypes.byref(data)) != 0 or not data.value:
+        return []
+    try:
+        if fmt.value != 32:
+            return []
+        longs = ctypes.cast(data, ctypes.POINTER(ctypes.c_ulong))
+        return [longs[i] for i in range(count.value)]
+    finally:
+        x11.XFree(data)
+
+
+def close_top_window(dpy):
+    """Closes the focused window when it is not the first one listed. True when it asked."""
+    root = x11.XDefaultRootWindow(dpy)
+    listed = windows_of(dpy, root, b"_NET_CLIENT_LIST")
+    active = windows_of(dpy, root, b"_NET_ACTIVE_WINDOW")
+    if len(listed) < 2 or not active or active[0] == listed[0] or active[0] not in listed:
+        return False
+    event = ClientMessage()
+    event.type = 33  # ClientMessage
+    event.window = active[0]
+    event.message_type = x11.XInternAtom(dpy, b"WM_PROTOCOLS", 0)
+    event.format = 32
+    event.data[0] = x11.XInternAtom(dpy, b"WM_DELETE_WINDOW", 0)
+    x11.XSendEvent(dpy, active[0], 0, 0, ctypes.byref(event))
+    x11.XFlush(dpy)
+    return True
+
+
+def read_ping():
+    try:
+        with open(FILE) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def main():
+    dpy = x11.XOpenDisplay(None)
+    if not dpy:
+        print("no display")
+        return
+    last = read_ping()
+    while True:
+        now = read_ping()
+        if now and now != last:
+            last = now
+            print("back: closed a top window" if close_top_window(dpy) else "back: nothing to close", flush=True)
+        time.sleep(0.15)
+
+
+if __name__ == "__main__":
+    main()
+PYBACK
+python3 /root/.cache/vsc-back.py >/tmp/vsc-back.log 2>&1 &
 # The pointer is not drawn: the screen is touched directly.
 if command -v unclutter >/dev/null 2>&1; then
     unclutter --timeout 1 >/tmp/unclutter.log 2>&1 &
@@ -341,7 +439,14 @@ openbox >/tmp/openbox.log 2>&1 &
 # The editor (work package WP4). Plain VSCodium, started the way a PC desktop would
 # start it, with the flags Electron needs inside proot and nothing else: no heap or
 # memory flags (Master Blueprint section 2 is not implemented).
-mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions
+mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions "$WORKSPACE/.extensions"
+# One extensions folder for everything, in the workspace, so that it survives and is shared. What
+# the editor installed before this folder existed is moved over once (an entry that is already
+# there is kept; copies in shared storage carry no permissions or links, so a failed one is skipped).
+for old in /root/.vscode-oss/extensions/*; do
+    [ -e "$old" ] || continue
+    [ -e "$WORKSPACE/.extensions/$(basename "$old")" ] || cp -r --no-preserve=mode,ownership "$old" "$WORKSPACE/.extensions/" 2>/dev/null || true
+done
 if [ ! -e /root/.config/VSCodium/User/settings.json ]; then
 cat > /root/.config/VSCodium/User/settings.json <<JSON
 {
@@ -392,7 +497,7 @@ tries=0
 while :; do
     rm -rf /root/.config/VSCodium/logs
     /usr/share/codium/codium $COMMON $(variant_flags "$v") \
-        --user-data-dir=/root/.config/VSCodium --extensions-dir=/root/.vscode-oss/extensions \
+        --user-data-dir=/root/.config/VSCodium --extensions-dir="$WORKSPACE/.extensions" \
         "$WORKSPACE" >/tmp/codium.log 2>&1 &
     cpid=$!
     echo "variant $v started" >> /tmp/codium.log

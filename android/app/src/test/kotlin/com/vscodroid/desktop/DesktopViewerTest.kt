@@ -12,11 +12,12 @@ class DesktopViewerTest {
     fun `the picture is the whole display with nothing of Android's added`() {
         val p = DesktopViewer.SCREEN_PREFERENCES
         assertEquals(true, p["fullscreen"])
-        assertEquals(false, p["showAdditionalKbd"], "no extra-keys bar: PC parity")
+        assertEquals(true, p["showAdditionalKbd"], "the extra-keys bar is there for coding on a phone")
+        assertEquals(true, p["additionalKbdVisible"])
         assertEquals("native", p["displayResolutionMode"])
         assertEquals(true, p["displayStretch"], "no black bands around the picture")
         assertEquals("3", p["touchMode"], "direct touch, not the trackpad")
-        assertEquals("send escape", p["backButtonAction"], "Back never opens the keyboard")
+        assertEquals("close top window", p["backButtonAction"], "Back never opens the keyboard")
         assertEquals("toggle soft keyboard", p["volumeDownAction"], "a fallback that needs no automation")
     }
 

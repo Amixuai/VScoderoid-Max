@@ -223,8 +223,9 @@
             android:name="com.termux.x11.MainActivity"
             android:exported="false"
             android:alwaysRetainTaskState="true"
+            android:theme="@style/VscX11Theme"
             android:screenOrientation="sensorLandscape"
-            tools:replace="android:exported">
+            tools:replace="android:exported,android:theme">
             <intent-filter tools:node="removeAll" />
             <meta-data android:name="android.app.shortcuts" tools:node="remove" />
         </activity>
@@ -240,6 +241,7 @@
             android:name=".desktop.DesktopPickerActivity"
             android:exported="false"
             android:excludeFromRecents="true"
+            android:taskAffinity=""
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <service android:name="com.termux.x11.utils.KeyInterceptor" tools:node="remove" />
