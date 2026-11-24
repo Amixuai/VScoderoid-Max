@@ -430,28 +430,127 @@ edit(
     main,
     "    /** Tells the Debian side that Back was pressed",
     """    private android.view.View vscCover;
+    private int vscSyncSerial = 0;
     private final Runnable vscUncover = () -> {
-        if (vscCover != null && vscCover.getParent() instanceof android.view.ViewGroup)
-            ((android.view.ViewGroup) vscCover.getParent()).removeView(vscCover);
+        final android.view.View c = vscCover;
+        if (c != null && c.getParent() instanceof android.view.ViewGroup)
+            c.animate().alpha(0f).setDuration(150).withEndAction(() -> {
+                if (c.getParent() instanceof android.view.ViewGroup)
+                    ((android.view.ViewGroup) c.getParent()).removeView(c);
+                c.setAlpha(1f);
+            }).start();
+    };
+    // Asks the X server to answer once it has applied the new size; the answer means the picture
+    // underneath is the new one.
+    private final Runnable vscAskSync = () -> {
+        try {
+            final LorieView v = getLorieView();
+            if (!v.connected())
+                return;
+            final int serial = ++vscSyncSerial;
+            v.setSyncListener(reply -> {
+                if (reply == serial)
+                    runOnUiThread(this::vscSettled);
+            });
+            v.sendSync(serial);
+        } catch (Throwable ignored) {
+        }
     };
 
-    /** The editor's dark colour over the picture for a moment (see patch 10). */
+    private void vscSettled() {
+        handler.removeCallbacks(vscUncover);
+        android.view.Choreographer.getInstance().postFrameCallback(t1 ->
+                android.view.Choreographer.getInstance().postFrameCallback(t2 ->
+                        handler.postDelayed(vscUncover, 40)));
+    }
+
+    /** The editor's dark colour over the picture until the new size has been drawn (see patch 10). */
     private void vscCoverBriefly() {
         try {
             if (vscCover == null) {
                 vscCover = new android.view.View(this);
                 vscCover.setBackgroundColor(0xFF1E1E1E);
             }
+            vscCover.animate().cancel();
+            vscCover.setAlpha(1f);
             if (vscCover.getParent() == null)
                 frm.addView(vscCover, frm.indexOfChild(getLorieView()) + 1,
                         new android.widget.FrameLayout.LayoutParams(-1, -1));
             getTerminalToolbarViewPager().bringToFront();
             handler.removeCallbacks(vscUncover);
-            handler.postDelayed(vscUncover, 450);
+            handler.removeCallbacks(vscAskSync);
+            handler.postDelayed(vscAskSync, 80);
+            handler.postDelayed(vscUncover, 900); // never kept longer than this, whatever the server says
         } catch (Throwable ignored) {
         }
     }
 
     /** Tells the Debian side that Back was pressed""",
 )
+# 11. One notification, not two: the separate "Termux:X11" one is not shown (the desktop has its own,
+#     with its own Stop). And the raw "Not connected" screen is never shown: a loading screen sits on
+#     top until the Debian side says the editor window is up (vsc-ready, written by vsc-back.py).
+edit(
+    "lorie/src/main/java/com/termux/x11/LorieApp.java",
+    "    public void onActivityResumed(MainActivity activity) {\n        notificationManager.notify(NOTIFICATION_ID, buildNotification(activity));",
+    "    public void onActivityResumed(MainActivity activity) {\n        notificationManager.cancel(NOTIFICATION_ID);",
+)
+edit(
+    main,
+    "        frm = findViewById(R.id.frame);\n",
+    "        frm = findViewById(R.id.frame);\n        vscShowLoading();\n",
+)
+edit(
+    main,
+    "    /** Tells the Debian side that Back was pressed",
+    """    private android.view.View vscLoading;
+    private final Runnable vscHideLoading = () -> {
+        final android.view.View c = vscLoading;
+        vscLoading = null;
+        if (c != null && c.getParent() instanceof android.view.ViewGroup)
+            c.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                if (c.getParent() instanceof android.view.ViewGroup)
+                    ((android.view.ViewGroup) c.getParent()).removeView(c);
+            }).start();
+    };
+
+    /** The "Starting the desktop..." screen, kept until the editor window is up or two minutes pass. */
+    private void vscShowLoading() {
+        try {
+            java.io.File ready = new java.io.File(getFilesDir(), "debian_rootfs/tmp/.X11-unix/vsc-ready");
+            if (ready.exists())
+                return;
+            android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+            box.setOrientation(android.widget.LinearLayout.VERTICAL);
+            box.setGravity(android.view.Gravity.CENTER);
+            box.setBackgroundColor(0xFF1E1E1E);
+            box.setClickable(true);
+            box.addView(new android.widget.ProgressBar(this));
+            android.widget.TextView text = new android.widget.TextView(this);
+            int id = getResources().getIdentifier("desktop_starting", "string", getPackageName());
+            text.setText(id != 0 ? getString(id) : "");
+            text.setTextColor(0xFFCCCCCC);
+            text.setTextSize(16);
+            text.setPadding(0, (int) (24 * getResources().getDisplayMetrics().density), 0, 0);
+            box.addView(text);
+            frm.addView(box, new android.widget.FrameLayout.LayoutParams(-1, -1));
+            vscLoading = box;
+            handler.postDelayed(vscHideLoading, 120000);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Tells the Debian side that Back was pressed""",
+)
+edit(
+    main,
+    '        final java.io.File pickFile = new java.io.File(dir, "vsc-pick-req");\n',
+    '        final java.io.File pickFile = new java.io.File(dir, "vsc-pick-req");\n        final java.io.File readyFile = new java.io.File(dir, "vsc-ready");\n',
+)
+edit(
+    main,
+    "                    String pick = vscRead(pickFile);\n",
+    "                    if (vscLoading != null && readyFile.exists())\n                        runOnUiThread(vscHideLoading);\n                    String pick = vscRead(pickFile);\n",
+)
+
 print("patch-termux-x11: all edits applied")

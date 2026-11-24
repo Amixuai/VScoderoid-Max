@@ -619,5 +619,5 @@
     <string name="desktop_low_memory">記憶體不足。如果桌面變慢，請關閉其他應用程式。</string>
     <string name="desktop_phantom_help">Android 12 及更新版本可能會停止背景程序，這會使桌面結束。若要避免，請在開發人員選項中開啟 Disable child process restrictions（Android 14 及更新版本），或將手機連接到電腦並執行：adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">桌面正在執行，而且相當耗電。使用完畢後請停止它。</string>
-    <string name="desktop_action_stop">停止</string>
+    <string name="desktop_action_stop">停止服務</string>
 </resources>

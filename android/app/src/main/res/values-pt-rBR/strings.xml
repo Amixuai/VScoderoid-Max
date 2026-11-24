@@ -627,5 +627,5 @@
     <string name="desktop_low_memory">A memória está baixa. Feche outros apps se a área de trabalho ficar lenta.</string>
     <string name="desktop_phantom_help">O Android 12 e mais recentes podem encerrar processos em segundo plano, o que encerraria a área de trabalho. Para evitar isso, ative Disable child process restrictions nas opções do desenvolvedor (Android 14 e mais recentes) ou conecte o telefone a um computador e execute: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">A área de trabalho está em execução e consome muita bateria. Pare-a quando terminar.</string>
-    <string name="desktop_action_stop">Parar</string>
+    <string name="desktop_action_stop">Parar servidor</string>
 </resources>

@@ -623,5 +623,5 @@
     <string name="desktop_low_memory">Der Arbeitsspeicher ist knapp. Schließe andere Apps, wenn der Desktop langsam wird.</string>
     <string name="desktop_phantom_help">Android 12 und neuer kann Hintergrundprozesse beenden, wodurch der Desktop enden würde. Das verhinderst du, indem du in den Entwickleroptionen Disable child process restrictions aktivierst (Android 14 und neuer) oder das Telefon mit einem Computer verbindest und ausführst: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">Der Desktop läuft und verbraucht viel Akku. Beende ihn, wenn du fertig bist.</string>
-    <string name="desktop_action_stop">Beenden</string>
+    <string name="desktop_action_stop">Server beenden</string>
 </resources>

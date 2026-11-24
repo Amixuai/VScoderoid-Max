@@ -631,5 +631,5 @@
     <string name="desktop_low_memory">Mało pamięci. Jeśli pulpit zwolni, zamknij inne aplikacje.</string>
     <string name="desktop_phantom_help">Android 12 i nowszy może zatrzymywać procesy w tle, co zakończyłoby pulpit. Aby temu zapobiec, włącz Disable child process restrictions w opcjach programisty (Android 14 i nowszy) albo podłącz telefon do komputera i uruchom: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">Pulpit działa i mocno obciąża baterię. Zatrzymaj go, gdy skończysz.</string>
-    <string name="desktop_action_stop">Zatrzymaj</string>
+    <string name="desktop_action_stop">Zatrzymaj serwer</string>
 </resources>

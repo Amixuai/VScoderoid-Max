@@ -631,5 +631,5 @@
     <string name="desktop_low_memory">Málo paměti. Pokud se plocha zpomalí, zavřete ostatní aplikace.</string>
     <string name="desktop_phantom_help">Android 12 a novější může ukončit procesy na pozadí, čímž by plocha skončila. Zabráníte tomu zapnutím možnosti Disable child process restrictions ve Vývojářských možnostech (Android 14 a novější), nebo připojte telefon k počítači a spusťte: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">Plocha běží a výrazně zatěžuje baterii. Až skončíte, zastavte ji.</string>
-    <string name="desktop_action_stop">Zastavit</string>
+    <string name="desktop_action_stop">Zastavit server</string>
 </resources>

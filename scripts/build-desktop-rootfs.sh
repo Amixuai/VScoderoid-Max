@@ -212,6 +212,26 @@ ln -sfn /usr/share/codium "$TREE/engines/electron_vscode/app"
 
 echo "Cleaning..."
 in_tree apt-get clean
+# Weight nobody reads on a phone: documentation, manual pages and info files (no man or info
+# reader is installed, so they cannot even be opened), translations of programs into other
+# languages, and the editor's translated resource files. Debian's copyright files stay, as the
+# licences require. Nothing a program needs to run is touched.
+find "$TREE/usr/share/doc" -mindepth 1 \( -type f -o -type l \) ! -name copyright -delete 2>/dev/null || true
+find "$TREE/usr/share/doc" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+rm -rf "$TREE"/usr/share/man/* "$TREE"/usr/share/info/* "$TREE"/usr/share/lintian "$TREE"/usr/share/doc-base "$TREE"/usr/share/gtk-doc
+find "$TREE/usr/share/locale" -mindepth 1 -maxdepth 1 ! -name 'en' ! -name 'en_*' ! -name 'locale.alias' -exec rm -rf {} + 2>/dev/null || true
+find "$TREE/usr/share/codium/locales" -type f -name '*.pak' ! -name 'en-US.pak' -delete 2>/dev/null || true
+# Later installs inside the system (apt install) keep the same rule, so the savings are not undone.
+mkdir -p "$TREE/etc/dpkg/dpkg.cfg.d"
+cat > "$TREE/etc/dpkg/dpkg.cfg.d/01-vscoderoid-slim" <<'SLIM'
+path-exclude=/usr/share/man/*
+path-exclude=/usr/share/info/*
+path-exclude=/usr/share/doc/*
+path-include=/usr/share/doc/*/copyright
+path-exclude=/usr/share/locale/*
+path-include=/usr/share/locale/en*
+path-include=/usr/share/locale/locale.alias
+SLIM
 rm -rf "$TREE"/var/lib/apt/lists/* "$TREE"/var/cache/apt/* "$TREE"/var/log/* "$TREE"/tmp/* \
        "$TREE/usr/bin/qemu-aarch64-static" "$TREE/etc/resolv.conf" "$TREE/usr/sbin/policy-rc.d"
 cleanup

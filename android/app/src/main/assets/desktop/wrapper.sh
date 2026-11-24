@@ -136,7 +136,8 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/vsc-session-bus
 rm -f /tmp/vsc-session-bus /tmp/.X11-unix/vsc-ime /tmp/.X11-unix/vsc-ime.tmp \
     /tmp/.X11-unix/vsc-pick-req /tmp/.X11-unix/vsc-pick-req.tmp \
     /tmp/.X11-unix/vsc-pick-res /tmp/.X11-unix/vsc-pick-res.tmp \
-    /tmp/.X11-unix/vsc-back /tmp/.X11-unix/vsc-back.tmp /tmp/.X11-unix/vsc-quit
+    /tmp/.X11-unix/vsc-back /tmp/.X11-unix/vsc-back.tmp /tmp/.X11-unix/vsc-quit \
+    /tmp/.X11-unix/vsc-ready /tmp/.X11-unix/vsc-ready.tmp
 mkdir -p /root/.cache
 if command -v dbus-daemon >/dev/null 2>&1 && \
         dbus-daemon --session --fork --nopidfile --address="$DBUS_SESSION_BUS_ADDRESS" >/tmp/dbus.log 2>&1; then
@@ -353,6 +354,7 @@ import ctypes, ctypes.util, os, time
 # WM_DELETE_WINDOW. The editor window is the first one the window manager lists.
 FILE = os.environ.get("VSC_BACK_FILE", "/tmp/.X11-unix/vsc-back")
 QUIT = os.environ.get("VSC_QUIT_FILE", "/tmp/.X11-unix/vsc-quit")
+READY = os.environ.get("VSC_READY_FILE", "/tmp/.X11-unix/vsc-ready")
 x11 = ctypes.CDLL(ctypes.util.find_library("X11") or "libX11.so.6")
 x11.XOpenDisplay.restype = ctypes.c_void_p
 x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
@@ -384,7 +386,7 @@ def windows_of(dpy, window, prop):
     count = ctypes.c_ulong()
     rest = ctypes.c_ulong()
     data = ctypes.c_void_p()
-    if x11.XGetWindowProperty(dpy, window, x11.XInternAtom(dpy, prop, 1), 0, 4096, 0, 0,
+    if x11.XGetWindowProperty(dpy, window, x11.XInternAtom(dpy, prop, 0), 0, 4096, 0, 0,
                               ctypes.byref(actual), ctypes.byref(fmt), ctypes.byref(count),
                               ctypes.byref(rest), ctypes.byref(data)) != 0 or not data.value:
         return []
@@ -448,6 +450,16 @@ def paint_background(dpy):
     x11.XFlush(dpy)
 
 
+def say_ready():
+    """Tells the app the editor window is up, so it can drop its loading screen."""
+    try:
+        with open(READY + ".tmp", "w") as f:
+            f.write("1")
+        os.replace(READY + ".tmp", READY)
+    except OSError:
+        pass
+
+
 def read_ping():
     try:
         with open(FILE) as f:
@@ -463,7 +475,17 @@ def main():
         return
     paint_background(dpy)
     last = read_ping()
+    root = x11.XDefaultRootWindow(dpy)
+    first_window = None
+    announced = False
     while True:
+        if not announced:
+            if first_window is None and windows_of(dpy, root, b"_NET_CLIENT_LIST"):
+                first_window = time.time()
+            # A moment after the window appears, so its first picture is already drawn.
+            if first_window is not None and time.time() - first_window > 1.5:
+                say_ready()
+                announced = True
         if os.path.exists(QUIT):
             try:
                 os.remove(QUIT)

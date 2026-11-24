@@ -627,5 +627,5 @@
     <string name="desktop_low_memory">La memoria è scarsa. Chiudi le altre app se il desktop rallenta.</string>
     <string name="desktop_phantom_help">Android 12 e versioni successive possono interrompere i processi in background, e questo chiuderebbe il desktop. Per evitarlo, attiva Disable child process restrictions nelle opzioni sviluppatore (Android 14 e successivi) oppure collega il telefono a un computer ed esegui: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">Il desktop è in esecuzione e consuma molta batteria. Fermalo quando hai finito.</string>
-    <string name="desktop_action_stop">Ferma</string>
+    <string name="desktop_action_stop">Ferma il server</string>
 </resources>

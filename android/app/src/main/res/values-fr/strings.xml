@@ -627,5 +627,5 @@
     <string name="desktop_low_memory">La mémoire est faible. Fermez d\'autres applications si le bureau ralentit.</string>
     <string name="desktop_phantom_help">Android 12 et les versions ultérieures peuvent arrêter les processus en arrière-plan, ce qui mettrait fin au bureau. Pour l\'éviter, activez Disable child process restrictions dans les options pour les développeurs (Android 14 et ultérieur), ou connectez le téléphone à un ordinateur et exécutez : adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">Le bureau est en cours d\'exécution et consomme beaucoup de batterie. Arrêtez-le lorsque vous avez terminé.</string>
-    <string name="desktop_action_stop">Arrêter</string>
+    <string name="desktop_action_stop">Arrêter le serveur</string>
 </resources>

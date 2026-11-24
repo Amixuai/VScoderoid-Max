@@ -619,5 +619,5 @@
     <string name="desktop_low_memory">メモリが不足しています。デスクトップが遅くなったら、他のアプリを閉じてください。</string>
     <string name="desktop_phantom_help">Android 12 以降ではバックグラウンドのプロセスが停止されることがあり、デスクトップが終了してしまいます。防ぐには、開発者向けオプションで Disable child process restrictions をオンにするか(Android 14 以降)、スマートフォンをコンピューターに接続して次を実行します: adb shell device_config put activity_manager max_phantom_processes 2147483647</string>
     <string name="desktop_notification_text">デスクトップが実行中で、バッテリーを多く消費します。使い終わったら停止してください。</string>
-    <string name="desktop_action_stop">停止</string>
+    <string name="desktop_action_stop">サーバーを停止</string>
 </resources>
