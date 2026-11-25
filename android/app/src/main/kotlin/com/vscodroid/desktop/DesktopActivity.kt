@@ -241,6 +241,7 @@ class DesktopActivity : AppCompatActivity() {
                     when (value) {
                         is Boolean -> putBoolean(key, value)
                         is String -> putString(key, value)
+                        is Int -> putInt(key, value)
                     }
                 }
             }
@@ -282,7 +283,7 @@ class DesktopActivity : AppCompatActivity() {
         const val EXTRA_SETUP_ONLY = "setup_only"
 
         private const val KEY_PHANTOM_HELP_SHOWN = "phantom_help_shown"
-        private const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set_v5"
+        private const val KEY_SCREEN_PREFS_SET = "x11_screen_prefs_set_v6"
         private const val DETAIL_CHARS = 1200
         private const val MEMORY_WARNING_GAP_MS = 5 * 60 * 1000L
     }

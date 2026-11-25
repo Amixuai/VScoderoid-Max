@@ -23,7 +23,13 @@ object DesktopViewer {
         // F1 to F12 and editing keys). Termux:X11 shows it only while the soft keyboard is up.
         "showAdditionalKbd" to true,
         "additionalKbdVisible" to true,
-        "displayResolutionMode" to "native",
+        // The editor draws with the processor (no graphics chip is used), so every screen change
+        // costs time in proportion to the number of pixels. The display is drawn at 80 percent
+        // of the phone's size and enlarged by the graphics chip: about a third fewer pixels to
+        // paint after the keyboard opens, and quicker taps. Set the mode back to native for a
+        // sharper but slower picture.
+        "displayResolutionMode" to "scaled",
+        "displayScale" to 80,
         // Fill the whole screen: with the display at the phone's own size there is nothing to
         // stretch, and any left-over band is filled instead of staying black.
         "displayStretch" to true,

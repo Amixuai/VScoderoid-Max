@@ -434,7 +434,7 @@ edit(
     private final Runnable vscUncover = () -> {
         final android.view.View c = vscCover;
         if (c != null && c.getParent() instanceof android.view.ViewGroup)
-            c.animate().alpha(0f).setDuration(150).withEndAction(() -> {
+            c.animate().alpha(0f).setDuration(70).withEndAction(() -> {
                 if (c.getParent() instanceof android.view.ViewGroup)
                     ((android.view.ViewGroup) c.getParent()).removeView(c);
                 c.setAlpha(1f);
@@ -461,7 +461,7 @@ edit(
         handler.removeCallbacks(vscUncover);
         android.view.Choreographer.getInstance().postFrameCallback(t1 ->
                 android.view.Choreographer.getInstance().postFrameCallback(t2 ->
-                        handler.postDelayed(vscUncover, 40)));
+                        handler.post(vscUncover)));
     }
 
     /** The editor's dark colour over the picture until the new size has been drawn (see patch 10). */
@@ -479,8 +479,8 @@ edit(
             getTerminalToolbarViewPager().bringToFront();
             handler.removeCallbacks(vscUncover);
             handler.removeCallbacks(vscAskSync);
-            handler.postDelayed(vscAskSync, 80);
-            handler.postDelayed(vscUncover, 900); // never kept longer than this, whatever the server says
+            handler.postDelayed(vscAskSync, 30);
+            handler.postDelayed(vscUncover, 500); // never kept longer than this, whatever the server says
         } catch (Throwable ignored) {
         }
     }

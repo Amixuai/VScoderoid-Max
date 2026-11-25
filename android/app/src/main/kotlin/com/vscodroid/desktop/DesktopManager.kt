@@ -186,6 +186,7 @@ object DesktopManager {
             fail(Failure(FailureKind.NeedsAllFilesAccess, ""))
             return
         }
+        DesktopExitLog.record(app)
         stopOtherEditor(app)
         move(DesktopState.Ready)
         move(DesktopState.Starting)

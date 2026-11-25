@@ -442,6 +442,14 @@ def close_all(dpy):
     x11.XFlush(dpy)
 
 
+def paint_windows(dpy):
+    """Every window in the editor colour too, so the part that is new after a resize is not white."""
+    root = x11.XDefaultRootWindow(dpy)
+    for window in windows_of(dpy, root, b"_NET_CLIENT_LIST"):
+        x11.XSetWindowBackground(dpy, window, 0x1E1E1E)
+    x11.XFlush(dpy)
+
+
 def paint_background(dpy):
     """The root window in the editor colour, so that nothing white shows while it redraws."""
     root = x11.XDefaultRootWindow(dpy)
@@ -468,7 +476,12 @@ def read_ping():
         return ""
 
 
+# A window can vanish between listing it and touching it; such an error must not end this script.
+_HANDLER = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)(lambda d, e: 0)
+
+
 def main():
+    x11.XSetErrorHandler(_HANDLER)
     dpy = x11.XOpenDisplay(None)
     if not dpy:
         print("no display")
@@ -478,7 +491,11 @@ def main():
     root = x11.XDefaultRootWindow(dpy)
     first_window = None
     announced = False
+    ticks = 0
     while True:
+        if ticks % 8 == 0:
+            paint_windows(dpy)
+        ticks += 1
         if not announced:
             if first_window is None and windows_of(dpy, root, b"_NET_CLIENT_LIST"):
                 first_window = time.time()
@@ -521,6 +538,19 @@ openbox >/tmp/openbox.log 2>&1 &
 # The extensions folder is the private folder of the app, bound in by the app (shared with the other editor):
 # private storage keeps the execute permission and the links that extensions with programs need.
 mkdir -p /root/.config/VSCodium/User /root/.vscode-oss/extensions
+# The editor switches to its slow screen reader mode whenever it sees accessibility on, which the
+# keyboard bridge needs. Switch that mode off unless the person chose a value themselves.
+python3 - <<\PYSET >/dev/null 2>&1
+import json, os
+path = "/root/.config/VSCodium/User/settings.json"
+try:
+    data = json.load(open(path)) if os.path.exists(path) else {}
+except Exception:
+    data = None
+if isinstance(data, dict) and "editor.accessibilitySupport" not in data:
+    data["editor.accessibilitySupport"] = "off"
+    json.dump(data, open(path, "w"), indent=2)
+PYSET
 if [ ! -e /root/.config/VSCodium/User/settings.json ]; then
 cat > /root/.config/VSCodium/User/settings.json <<JSON
 {
