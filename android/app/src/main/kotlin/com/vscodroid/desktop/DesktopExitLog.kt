@@ -26,10 +26,33 @@ object DesktopExitLog {
         runCatching {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             val infos = am.getHistoricalProcessExitReasons(context.packageName, 0, KEEP)
-            val text = format(infos.map { Entry(it.timestamp, it.processName, it.reason, it.status, it.description.orEmpty(), it.pss) })
+            val text = format(infos.map { Entry(it.timestamp, it.processName, it.reason, it.status, it.description.orEmpty(), it.pss, mainThreadOf(it)) })
             File(context.filesDir, FILE_NAME).writeText(text)
             val publicDir = File(android.os.Environment.getExternalStorageDirectory(), PublicWorkspace.HIDDEN_NAME)
             if (publicDir.isDirectory) File(publicDir, FILE_NAME).writeText(text)
+        }
+    }
+
+    /** Keeps the stack of a crash of this app (Java side) beside the user's files, so it can be read afterwards. */
+    fun installCrashLogger(context: Context) {
+        val app = context.applicationContext
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        if (previous is CrashWriter) return
+        Thread.setDefaultUncaughtExceptionHandler(CrashWriter(app, previous))
+    }
+
+    private class CrashWriter(
+        private val context: Context,
+        private val previous: Thread.UncaughtExceptionHandler?,
+    ) : Thread.UncaughtExceptionHandler {
+        override fun uncaughtException(thread: Thread, error: Throwable) {
+            runCatching {
+                val text = "Crash in thread ${thread.name} at ${Date()}\n" + error.stackTraceToString()
+                File(context.filesDir, "desktop_last_crash.txt").writeText(text)
+                val publicDir = File(android.os.Environment.getExternalStorageDirectory(), PublicWorkspace.HIDDEN_NAME)
+                if (publicDir.isDirectory) File(publicDir, "desktop_last_crash.txt").writeText(text)
+            }
+            previous?.uncaughtException(thread, error)
         }
     }
 
@@ -40,7 +63,29 @@ object DesktopExitLog {
         val status: Int,
         val description: String,
         val pssKb: Long,
+        val mainThread: String = "",
     )
+
+    /** For a not-responding exit: the stack of the main thread from Android's own report, so the cause is visible. */
+    private fun mainThreadOf(info: ApplicationExitInfo): String {
+        if (info.reason != ApplicationExitInfo.REASON_ANR) return ""
+        return runCatching {
+            info.traceInputStream?.bufferedReader()?.use { reader ->
+                val lines = ArrayList<String>()
+                var inMain = false
+                for (line in reader.lineSequence()) {
+                    if (!inMain) {
+                        if (line.startsWith("\"main\" prio=")) inMain = true
+                    } else if (line.isBlank() || lines.size >= 45) {
+                        break
+                    } else {
+                        lines.add("      " + line.trim())
+                    }
+                }
+                lines.joinToString("\n", postfix = if (lines.isEmpty()) "" else "\n")
+            }
+        }.getOrNull().orEmpty()
+    }
 
     internal fun format(entries: List<Entry>): String {
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
@@ -51,6 +96,7 @@ object DesktopExitLog {
                 .append(" | status ").append(e.status)
                 .append(" | memory ").append(e.pssKb / 1024).append(" MB")
                 .append(" | ").append(e.description).append('\n')
+            if (e.mainThread.isNotEmpty()) sb.append("    main thread was here:\n").append(e.mainThread)
         }
         return sb.toString()
     }

@@ -18,7 +18,7 @@ why() {
     *"Cannot allocate memory"*|*OutOfMemory*|*"Killed"*) echo "ran out of memory";;
     *"Could not resolve"*|*"Temporary failure"*|*"Network is unreachable"*|*"Connection refused"*|*"Unable to connect"*) echo "needs the internet or a running server";;
     *"cannot execute 'cc1"*|*"cc1plus: not found"*) echo "compiler is only partly installed (a compiler part is missing)";;
-    *"Permission denied"*) echo "permission problem";;
+    *"Permission denied"*) echo "permission problem: $(echo "$1" | grep -i 'permission denied' | head -n 1 | cut -c1-110)";;
     *"No module named"*|*"Cannot find module"*|*"cannot load such file"*|*"Can't locate"*) echo "language is there but a library or module is missing: $(echo "$1" | head -n 1 | cut -c1-90)";;
     "") echo "no output at all (the command failed silently or the tool does not work here)";;
     *) echo "wrong output: $(echo "$1" | head -n 2 | tr '\n' ' ' | cut -c1-110)";;

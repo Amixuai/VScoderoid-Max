@@ -9,7 +9,7 @@ LOG="$(mktemp /tmp/fix.XXXXXX)"
 # Results are kept between runs, so if Android ends the desktop half way, running this again
 # carries on (what is installed is skipped) and nothing already done is lost.
 OK="$OUTDIR/.fix_heavy_done"; BAD="$LOG.bad"; touch "$OK"; : > "$BAD"
-APT="apt-get -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef"
+APT="nice -n 19 apt-get -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef"
 echo "[1/4] Repairing dpkg and refreshing the package list..."
 if [ -n "$(dpkg --audit 2>/dev/null)" ]; then echo "  (finishing an interrupted install first, this can take a few minutes)"; dpkg --configure -a >/dev/null 2>&1; fi
 # No service may start while installing (there is no systemd inside this system).
