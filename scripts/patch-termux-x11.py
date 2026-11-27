@@ -430,7 +430,6 @@ edit(
     main,
     "    /** Tells the Debian side that Back was pressed",
     """    private android.view.View vscCover;
-    private int vscSyncSerial = 0;
     private final Runnable vscUncover = () -> {
         final android.view.View c = vscCover;
         if (c != null && c.getParent() instanceof android.view.ViewGroup)
@@ -440,30 +439,6 @@ edit(
                 c.setAlpha(1f);
             }).start();
     };
-    // Asks the X server to answer once it has applied the new size; the answer means the picture
-    // underneath is the new one.
-    private final Runnable vscAskSync = () -> {
-        try {
-            final LorieView v = getLorieView();
-            if (!v.connected())
-                return;
-            final int serial = ++vscSyncSerial;
-            v.setSyncListener(reply -> {
-                if (reply == serial)
-                    runOnUiThread(this::vscSettled);
-            });
-            v.sendSync(serial);
-        } catch (Throwable ignored) {
-        }
-    };
-
-    private void vscSettled() {
-        handler.removeCallbacks(vscUncover);
-        android.view.Choreographer.getInstance().postFrameCallback(t1 ->
-                android.view.Choreographer.getInstance().postFrameCallback(t2 ->
-                        handler.post(vscUncover)));
-    }
-
     /** The editor's dark colour over the picture until the new size has been drawn (see patch 10). */
     private void vscCoverBriefly() {
         try {
@@ -478,9 +453,9 @@ edit(
                         new android.widget.FrameLayout.LayoutParams(-1, -1));
             getTerminalToolbarViewPager().bringToFront();
             handler.removeCallbacks(vscUncover);
-            handler.removeCallbacks(vscAskSync);
-            handler.postDelayed(vscAskSync, 30);
-            handler.postDelayed(vscUncover, 500); // never kept longer than this, whatever the server says
+            // A plain timer: no call into the X server from the screen thread (a stuck server
+            // must never be able to freeze the screen).
+            handler.postDelayed(vscUncover, 220);
         } catch (Throwable ignored) {
         }
     }
